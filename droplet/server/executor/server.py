@@ -119,8 +119,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # sink function.
     dag_runtimes = {}
 
-    # Executor cache that stores deserialized payload
-    # It is a map from key to deserialized payload
+    # A map with KVS keys and their corresponding deserialized payloads.
     cache = {}
 
     # Internal metadata to track thread utilization.
@@ -197,6 +196,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                                       received_triggers[trkey],
                                       pinned_functions[fname], schedule,
                                       user_library, dag_runtimes, cache)
+
                 del received_triggers[trkey]
                 del queue[fname][schedule.id]
 
@@ -235,6 +235,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                                           received_triggers[trkey],
                                           pinned_functions[fname], schedule,
                                           user_library, dag_runtimes, cache)
+
                     del received_triggers[key]
                     del queue[fname][trigger.id]
 

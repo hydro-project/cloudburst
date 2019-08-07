@@ -22,6 +22,7 @@
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 coverage run tests
+<<<<<<< HEAD
 
 # If the tests failed, do not generate a report, but report a failure instead.
 EXIT=$?
@@ -29,4 +30,6 @@ if [[ $EXIT -ne 0 ]]; then
   exit $EXIT
 fi
 
+=======
+>>>>>>> Initial commit
 coverage report -m

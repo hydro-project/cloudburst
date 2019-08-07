@@ -17,6 +17,7 @@ import time
 
 from anna.lattices import (
     Lattice,
+    LWWPairLattice,
     MapLattice,
     MultiKeyCausalLattice,
     SetLattice,
@@ -58,7 +59,6 @@ def exec_function(exec_socket, kvs, user_library, cache):
                 dependencies = {}
                 result = _exec_func_causal(kvs, f, fargs, user_library,
                                            dependencies=dependencies)
-
         except Exception as e:
             logging.exception('Unexpected error %s while executing function.' %
                               (str(e)))
@@ -69,7 +69,8 @@ def exec_function(exec_socket, kvs, user_library, cache):
         result = serializer.dump_lattice(result)
         succeed = kvs.put(call.response_key, result)
     else:
-        result = serializer.dump_lattice(result, MultiKeyCausalLattice, causal_dependencies=dependencies)
+        result = serializer.dump_lattice(result, MultiKeyCausalLattice,
+                                         causal_dependencies=dependencies)
         succeed = kvs.causal_put(call.response_key, result)
 
     if not succeed:

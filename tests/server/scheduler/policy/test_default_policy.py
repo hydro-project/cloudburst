@@ -29,7 +29,7 @@ from droplet.shared.serializer import Serializer
 from tests.mock import kvs_client, zmq_utils
 
 serializer = Serializer()
-logging.disable()
+logging.disable(logging.CRITICAL)
 
 
 class TestDefaultSchedulerPolicy(unittest.TestCase):
