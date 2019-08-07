@@ -1,0 +1,47 @@
+#  Copyright 2019 U.C. Berkeley RISE Lab
+# 
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+# 
+#      http://www.apache.org/licenses/LICENSE-2.0
+# 
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+language: python
+python:
+  - "3.7"
+sudo: required
+
+os: 
+  - linux
+
+# We use bionic for this project even though we use trusty for the other
+# deployments because we need Python3.7.
+dist: bionic
+
+env:
+  global:
+    - PROTOBUF_VERSION=3.9.1
+    - PROTOC_ONLY=yes
+    # We add this to the PATH because we explicitly install protoc there.
+    - PATH=$PATH:/home/travis/bin
+
+services:
+  - docker
+
+install:
+  - pip install -r requirements.txt
+  - ./common/scripts/travis/travis-install.sh
+  - ./scripts/install-anna.sh
+
+script:
+  - ./scripts/travis/travis-build.sh
+
+after_success:
+  - ./scripts/travis/upload-codecov.sh
+  - ./scripts/travis/docker-build.sh

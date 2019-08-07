@@ -1,0 +1,103 @@
+//  Copyright 2019 U.C. Berkeley RISE Lab
+//
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+
+syntax = "proto3";
+
+// A status update sent from executors to schedulers, giving the schedulers
+// useful information about what resources are available in the system.
+message ThreadStatus {
+  // The IP address of the executor sending the update.
+  string ip = 1;
+
+  // The thread ID of the scheduler sending the update.
+  uint32 tid = 2;
+
+  // The list of function(s) that are pinned on this executor.
+  repeated string functions = 3;
+
+  // The average utilization of this executor over the last epoch -- this is
+  // used to avoid sending work to executors that are overloaded.
+  double utilization = 4;
+
+  // The status of this executor -- if this is set to false, it means the
+  // executor is clearing its queues and leaving the system, and the schedulers
+  // should no longer send it any work.
+  bool running = 5;
+}
+
+// A periodic reporting of the functions being executed by each executor, and
+// how many resources each function is consuming.
+message ExecutorStatistics {
+  // Statistics regarding an individual function -- specifically, call
+  // frequency and aggregated runtime.
+  message FunctionStatistics {
+    // The name of the function being tracked.
+    string name = 1;
+
+    // The number of calls this function received.
+    uint32 call_count = 2;
+
+    // A list of how long each request to this function took to run.
+    repeated double runtime = 3;
+  }
+
+  // Statistics regarding an entire DAG request, including call frequency,
+  // arrival rates, and end-to-end runtime.
+  message DagStatistics {
+    // The name of the DAG for which statistics are reported.
+    string name = 1;
+
+    // A list of how long each request to this DAG took to run (end-to-end,
+    // including the schedule).
+    repeated double runtimes = 2;
+
+    // A list of the interval between the arrival times of each sequential pair
+    // of request.
+    repeated double interarrival = 3;
+
+    // The number of calls to this DAG received by a scheduler.
+    uint32 call_count = 4;
+  }
+
+  // The list of functions on which statistics are being reported in this
+  // message.
+  repeated FunctionStatistics functions = 1;
+
+  // The list of DAGs on which statistics are being reported in this message.
+  repeated DagStatistics dags = 2;
+}
+
+// An update shared between schedulers about what DAGs they are aware of and
+// what functions are being run by what executors.
+message SchedulerStatus {
+  // The location of an individual function, along with the IP address and
+  // thread ID it's running on.
+  message FunctionLocation {
+    // The name of the function.
+    string name = 1;
+
+    // The IP address at which it is running.
+    string ip = 2;
+
+    // The ID of the thread on which it is running.
+    uint32 tid = 3;
+  }
+
+  // A list of the names of DAGs that have been registered with this scheduler.
+  repeated string dags = 1;
+
+  // A list of function location information that this scheduler is aware of.
+  repeated FunctionLocation function_locations = 2;
+}
+
