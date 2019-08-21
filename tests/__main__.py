@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import sys
 import unittest
 
 from tests.server.executor import (
@@ -57,4 +58,7 @@ def droplet_test_suite():
 
 if __name__ == '__main__':
     runner = unittest.TextTestRunner()
-    runner.run(droplet_test_suite())
+    result = runner.run(droplet_test_suite())
+
+    if not result.wasSuccessful():
+        sys.exit(1)

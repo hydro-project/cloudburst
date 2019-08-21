@@ -119,6 +119,10 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # sink function.
     dag_runtimes = {}
 
+    # Executor cache that stores deserialized payload
+    # It is a map from key to deserialized payload
+    cache = {}
+
     # Internal metadata to track thread utilization.
     report_start = time.time()
     event_occupancy = {'pin': 0.0,
@@ -155,7 +159,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             work_start = time.time()
             with DropletUserLibrary(context, pusher_cache, ip, thread_id,
                                     client) as user_library:
-                exec_function(exec_socket, client, user_library)
+                exec_function(exec_socket, client, user_library, cache)
 
             utils.push_status(schedulers, pusher_cache, status)
 
@@ -192,7 +196,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[trkey],
                                       pinned_functions[fname], schedule,
-                                      user_library, dag_runtimes)
+                                      user_library, dag_runtimes, cache)
                 del received_triggers[trkey]
                 del queue[fname][schedule.id]
 
@@ -230,7 +234,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                         exec_dag_function(pusher_cache, client,
                                           received_triggers[trkey],
                                           pinned_functions[fname], schedule,
-                                          user_library, dag_runtimes)
+                                          user_library, dag_runtimes, cache)
                     del received_triggers[key]
                     del queue[fname][trigger.id]
 

@@ -38,7 +38,7 @@ from droplet.shared.serializer import Serializer
 serializer = Serializer()
 
 
-def exec_function(exec_socket, kvs, user_library):
+def exec_function(exec_socket, kvs, user_library, cache):
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
 
@@ -49,11 +49,11 @@ def exec_function(exec_socket, kvs, user_library):
         logging.info('Function %s not found! Returning an error.' %
                      (call.name))
         sutils.error.error = FUNC_NOT_FOUND
-        result = serializer.dump(('ERROR', sutils.error.SerializeToString()))
+        result = ('ERROR', sutils.error.SerializeToString())
     else:
         try:
             if call.consistency == NORMAL:
-                result = _exec_func_normal(kvs, f, fargs, user_library)
+                result = _exec_func_normal(kvs, f, fargs, user_library, cache)
             else:
                 dependencies = {}
                 result = _exec_func_causal(kvs, f, fargs, user_library,
@@ -63,14 +63,13 @@ def exec_function(exec_socket, kvs, user_library):
             logging.exception('Unexpected error %s while executing function.' %
                               (str(e)))
             sutils.error.error = EXECUTION_ERROR
-            result = serializer.dump(('ERROR: ' + str(e),
-                                      sutils.error.SerializeToString()))
+            result = ('ERROR: ' + str(e), sutils.error.SerializeToString())
 
     if call.consistency == NORMAL:
         result = serializer.dump_lattice(result)
         succeed = kvs.put(call.response_key, result)
     else:
-        result = serializer.dump_lattice(result, MultiKeyCausalLattice)
+        result = serializer.dump_lattice(result, MultiKeyCausalLattice, causal_dependencies=dependencies)
         succeed = kvs.causal_put(call.response_key, result)
 
     if not succeed:
@@ -78,11 +77,11 @@ def exec_function(exec_socket, kvs, user_library):
                      + 'into the KVS.')
 
 
-def _exec_func_normal(kvs, func, args, user_lib):
+def _exec_func_normal(kvs, func, args, user_lib, cache):
     refs = list(filter(lambda a: isinstance(a, DropletReference), args))
 
     if refs:
-        refs = _resolve_ref_normal(refs, kvs)
+        refs = _resolve_ref_normal(refs, kvs, cache)
 
     return _run_function(func, refs, args, user_lib)
 
@@ -114,22 +113,37 @@ def _run_function(func, refs, args, user_lib):
     return res
 
 
-def _resolve_ref_normal(refs, kvs):
-    keys = [ref.key for ref in refs]
-    keys = list(set(keys))
-    kv_pairs = kvs.get(keys)
-
-    # When chaining function executions, we must wait, so we check to see if
-    # certain values have not been resolved yet.
-    while None in kv_pairs.values():
-        kv_pairs = kvs.get(keys)
+def _resolve_ref_normal(refs, kvs, cache):
+    deserialize_map = {}
+    kv_pairs = {}
+    keys = set()
 
     for ref in refs:
-        key = ref.key
-        # Because references might be repeated, we check to make sure that we
-        # haven't already deserialized this ref.
-        if ref.deserialize and isinstance(kv_pairs[key], Lattice):
-            kv_pairs[key] = serializer.load_lattice(kv_pairs[key])
+        deserialize_map[ref.key] = ref.deserialize
+        if ref.key in cache:
+            kv_pairs[ref.key] = cache[ref.key]
+        else:
+            keys.add(ref.key)
+
+    keys = list(keys)
+
+    if len(keys) != 0:
+        returned_kv_pairs = kvs.get(keys)
+
+        # When chaining function executions, we must wait, so we check to see if
+        # certain values have not been resolved yet.
+        while None in returned_kv_pairs.values():
+            returned_kv_pairs = kvs.get(keys)
+
+        for key in keys:
+            # Because references might be repeated, we check to make sure that we
+            # haven't already deserialized this ref.
+            if deserialize_map[key] and isinstance(returned_kv_pairs[key], Lattice):
+                kv_pairs[key] = serializer.load_lattice(returned_kv_pairs[key])
+            else:
+                kv_pairs[key] = returned_kv_pairs[key]
+            # Cache the deserialized payload for future use
+            cache[key] = kv_pairs[key]
 
     return kv_pairs
 
@@ -184,11 +198,11 @@ def _resolve_ref_causal(refs, kvs, schedule, key_version_locations,
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule,
-                      user_library, dag_runtimes):
+                      user_library, dag_runtimes, cache):
     if schedule.consistency == NORMAL:
         finished = _exec_dag_function_normal(pusher_cache, kvs,
                                              triggers, function, schedule,
-                                             user_library)
+                                             user_library, cache)
     else:
         finished = _exec_dag_function_causal(pusher_cache, kvs,
                                              triggers, function, schedule,
@@ -219,7 +233,7 @@ def _construct_trigger(sid, fname, result):
 
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
-                              user_lib):
+                              user_lib, cache):
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].values)
 
@@ -228,7 +242,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
         fargs += list(trigger.arguments.values)
 
     fargs = [serializer.load(arg) for arg in fargs]
-    result = _exec_func_normal(kvs, function, fargs, user_lib)
+    result = _exec_func_normal(kvs, function, fargs, user_lib, cache)
 
     is_sink = True
     new_trigger = _construct_trigger(schedule.id, fname, result)

@@ -22,4 +22,11 @@
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 coverage run tests
+
+# If the tests failed, do not generate a report, but report a failure instead.
+EXIT=$?
+if [[ $EXIT -ne 0 ]]; then
+  exit $EXIT
+fi
+
 coverage report -m

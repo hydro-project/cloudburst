@@ -98,7 +98,7 @@ class Serializer():
 
         return result
 
-    def dump_lattice(self, value, typ=None):
+    def dump_lattice(self, value, typ=None, causal_dependencies={}):
         if not typ:
             if isinstance(value, set):
                 return self.dump_lattice(value, SetLattice)
@@ -138,7 +138,9 @@ class Serializer():
             # We assume that we will use the default vector clock for causal
             # metadata.
             data = SetLattice({self.dump(value)})
-            result = MultiKeyCausalLattice(DEFAULT_VC, MapLattice({}), data)
+            result = MultiKeyCausalLattice(DEFAULT_VC, 
+                                           MapLattice(causal_dependencies), 
+                                           data)
         else:
             raise ValueError(f'Unexpected lattice type: {str(typ)}')
 
