@@ -49,7 +49,7 @@ def exec_function(exec_socket, kvs, user_library, cache):
         logging.info('Function %s not found! Returning an error.' %
                      (call.name))
         sutils.error.error = FUNC_NOT_FOUND
-        result = serializer.dump(('ERROR', sutils.error.SerializeToString()))
+        result = ('ERROR', sutils.error.SerializeToString())
     else:
         try:
             if call.consistency == NORMAL:
@@ -63,8 +63,7 @@ def exec_function(exec_socket, kvs, user_library, cache):
             logging.exception('Unexpected error %s while executing function.' %
                               (str(e)))
             sutils.error.error = EXECUTION_ERROR
-            result = serializer.dump(('ERROR: ' + str(e),
-                                      sutils.error.SerializeToString()))
+            result = ('ERROR: ' + str(e), sutils.error.SerializeToString())
 
     if call.consistency == NORMAL:
         result = serializer.dump_lattice(result)
