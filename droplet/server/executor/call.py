@@ -69,7 +69,7 @@ def exec_function(exec_socket, kvs, user_library, cache):
         result = serializer.dump_lattice(result)
         succeed = kvs.put(call.response_key, result)
     else:
-        result = serializer.dump_lattice(result, MultiKeyCausalLattice)
+        result = serializer.dump_lattice(result, MultiKeyCausalLattice, causal_dependencies=dependencies)
         succeed = kvs.causal_put(call.response_key, result)
 
     if not succeed:
