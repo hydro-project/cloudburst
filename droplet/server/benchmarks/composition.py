@@ -18,7 +18,7 @@ import time
 
 import cloudpickle as cp
 
-from droplet.shared.proto.droplet_pb2 import DropletError
+from droplet.shared.proto.droplet_pb2 import DropletError, DAG_ALREADY_EXISTS
 
 
 def run(droplet_client, num_requests, sckt):
@@ -58,7 +58,7 @@ def run(droplet_client, num_requests, sckt):
     success, error = droplet_client.register_dag(dag_name, functions,
                                                  connections)
 
-    if not success:
+    if not success and error != DAG_ALREADY_EXISTS:
         print('Failed to register DAG: %s' % (DropletError.Name(error)))
         sys.exit(1)
 

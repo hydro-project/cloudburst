@@ -35,7 +35,7 @@ sys_random = random.SystemRandom()
 class DefaultDropletSchedulerPolicy(BaseDropletSchedulerPolicy):
 
     def __init__(self, pin_accept_socket, pusher_cache, kvs_client, ip,
-                 random_threshold=0.20):
+                 random_threshold=0.10):
         # This scheduler's IP address.
         self.ip = ip
 
@@ -95,7 +95,7 @@ class DefaultDropletSchedulerPolicy(BaseDropletSchedulerPolicy):
         # have received many requests, we remove them from the executor set
         # with high probability.
         for key in self.running_counts:
-            if (len(self.running_counts[key]) > 1000 and sys_random.random() >
+            if (len(self.running_counts[key]) > 100000 and sys_random.random() >
                     self.random_threshold):
                 executors.discard(key)
 
@@ -230,8 +230,8 @@ class DefaultDropletSchedulerPolicy(BaseDropletSchedulerPolicy):
 
     def process_status(self, status):
         key = (status.ip, status.tid)
-        logging.info('Received status update from executor %s:%d.' %
-                     (key[0], int(key[1])))
+        # logging.info('Received status update from executor %s:%d.' %
+        #              (key[0], int(key[1])))
 
         # This means that this node is currently departing, so we remove it
         # from all of our metadata tracking.
@@ -265,7 +265,7 @@ class DefaultDropletSchedulerPolicy(BaseDropletSchedulerPolicy):
 
         # If the executor thread is overutilized, we add it to the backoff set
         # and ignore it for a period of time.
-        if status.utilization > 0.7:
+        if status.utilization > 0.70:
             self.backoff[key] = time.time()
 
     def update(self):

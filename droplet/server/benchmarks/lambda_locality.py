@@ -21,7 +21,7 @@ import uuid
 import boto3
 import cloudpickle as cp
 
-from hydro.server.benchmark import utils
+from droplet.server.benchmarks import utils
 
 sys_random = random.SystemRandom()
 

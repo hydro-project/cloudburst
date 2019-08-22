@@ -53,7 +53,7 @@ from droplet.shared.utils import (
     LIST_PORT
 )
 
-METADATA_THRESHOLD = 3
+METADATA_THRESHOLD = 5
 REPORT_THRESHOLD = 5
 
 logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO,
@@ -186,12 +186,8 @@ def scheduler(ip, mgmt_ip, route_addr):
             for fname in dag[0].functions:
                 call_frequency[fname] += 1
 
-            rid = call_dag(call, pusher_cache, dags, policy)
-
-            resp = GenericResponse()
-            resp.success = True
-            resp.response_id = rid
-            dag_call_socket.send(resp.SerializeToString())
+            response = call_dag(call, pusher_cache, dags, policy)
+            dag_call_socket.send(response.SerializeToString())
 
         if (dag_delete_socket in socks and socks[dag_delete_socket] ==
                 zmq.POLLIN):
@@ -223,11 +219,11 @@ def scheduler(ip, mgmt_ip, route_addr):
             for dname in status.dags:
                 if dname not in dags:
                     payload = kvs.get(dname)
-                    while not payload:
+                    while None in payload:
                         payload = kvs.get(dname)
 
                     dag = Dag()
-                    dag.ParseFromString(payload.reveal())
+                    dag.ParseFromString(payload[dname].reveal())
                     dags[dag.name] = (dag, sched_utils.find_dag_source(dag))
 
                     for fname in dag.functions:
@@ -271,33 +267,33 @@ def scheduler(ip, mgmt_ip, route_addr):
                         (sched_ip))
                     sckt.send(msg)
 
-            stats = ExecutorStatistics()
-            for fname in call_frequency:
-                fstats = stats.functions.add()
-                fstats.name = fname
-                fstats.call_count = call_frequency[fname]
-                logging.info('Reporting %d calls for function %s.' %
-                             (call_frequency[fname], fname))
+            # stats = ExecutorStatistics()
+            # for fname in call_frequency:
+            #     fstats = stats.functions.add()
+            #     fstats.name = fname
+            #     fstats.call_count = call_frequency[fname]
+            #     logging.info('Reporting %d calls for function %s.' %
+            #                  (call_frequency[fname], fname))
 
-                call_frequency[fname] = 0
+            #     call_frequency[fname] = 0
 
-            for dname in interarrivals:
-                dstats = stats.dags.add()
-                dstats.name = dname
-                dstats.call_count = len(interarrivals[dname]) + 1
-                dstats.interarrival.extend(interarrivals[dname])
+            # for dname in interarrivals:
+            #     dstats = stats.dags.add()
+            #     dstats.name = dname
+            #     dstats.call_count = len(interarrivals[dname]) + 1
+            #     dstats.interarrival.extend(interarrivals[dname])
 
-                interarrivals[dname].clear()
+            #     interarrivals[dname].clear()
 
-            # We only attempt to send the statistics if we are running in
-            # cluster mode. If we are running in local mode, we write them to
-            # the local log file.
-            if mgmt_ip:
-                sckt = pusher_cache.get(sutils.get_statistics_report_address
-                                        (mgmt_ip))
-                sckt.send(stats.SerializeToString())
-            else:
-                logging.info(stats)
+            # # We only attempt to send the statistics if we are running in
+            # # cluster mode. If we are running in local mode, we write them to
+            # # the local log file.
+            # if mgmt_ip:
+            #     sckt = pusher_cache.get(sutils.get_statistics_report_address
+            #                             (mgmt_ip))
+            #     sckt.send(stats.SerializeToString())
+            # else:
+            #     logging.info(str(stats))
 
             start = time.time()
 

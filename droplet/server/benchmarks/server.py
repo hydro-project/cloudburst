@@ -17,7 +17,7 @@ import sys
 
 import zmq
 
-from droplet.client.client import DropletClient
+from droplet.client.client import DropletConnection
 from droplet.server.benchmarks import (
     composition,
     locality,
@@ -32,7 +32,7 @@ BENCHMARK_START_PORT = 3000
 
 
 def benchmark(ip, droplet_address, tid):
-    droplet = DropletClient(droplet_address, ip, tid)
+    droplet = DropletConnection(droplet_address, ip, tid)
 
     logging.basicConfig(filename='log_benchmark.txt', level=logging.INFO,
                         format='%(asctime)s %(message)s')

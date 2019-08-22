@@ -83,6 +83,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     else:
         client = AnnaTcpClient('127.0.0.1', '127.0.0.1', local=True, offset=1)
 
+    user_library = DropletUserLibrary(context, pusher_cache, ip, thread_id,
+                                      client)
+
     status = ThreadStatus()
     status.ip = ip
     status.tid = thread_id
@@ -156,9 +159,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
             work_start = time.time()
-            with DropletUserLibrary(context, pusher_cache, ip, thread_id,
-                                    client) as user_library:
-                exec_function(exec_socket, client, user_library, cache)
+            exec_function(exec_socket, client, user_library, cache)
+            user_library.close()
 
             utils.push_status(schedulers, pusher_cache, status)
 
@@ -190,12 +192,11 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             if (trkey in received_triggers and (len(received_triggers[trkey])
                                                 == len(schedule.triggers))):
 
-                with DropletUserLibrary(context, pusher_cache, ip, thread_id,
-                                        client) as user_library:
-                    exec_dag_function(pusher_cache, client,
-                                      received_triggers[trkey],
-                                      pinned_functions[fname], schedule,
-                                      user_library, dag_runtimes, cache)
+                exec_dag_function(pusher_cache, client,
+                                  received_triggers[trkey],
+                                  pinned_functions[fname], schedule,
+                                  user_library, dag_runtimes, cache)
+                user_library.close()
 
                 del received_triggers[trkey]
                 del queue[fname][schedule.id]
@@ -229,12 +230,11 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             if fname in queue and trigger.id in queue[fname]:
                 schedule = queue[fname][trigger.id]
                 if len(received_triggers[key]) == len(schedule.triggers):
-                    with DropletUserLibrary(context, pusher_cache, ip,
-                                            thread_id, client) as user_library:
-                        exec_dag_function(pusher_cache, client,
-                                          received_triggers[trkey],
-                                          pinned_functions[fname], schedule,
-                                          user_library, dag_runtimes, cache)
+                    exec_dag_function(pusher_cache, client,
+                                      received_triggers[key],
+                                      pinned_functions[fname], schedule,
+                                      user_library, dag_runtimes, cache)
+                    user_library.close()
 
                     del received_triggers[key]
                     del queue[fname][trigger.id]
@@ -265,11 +265,14 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         # periodically report function occupancy
         report_end = time.time()
         if report_end - report_start > REPORT_THRESH:
-            # periodically report my status to schedulers
-            utils.push_status(schedulers, pusher_cache, status)
+            cache.clear()
 
             utilization = total_occupancy / (report_end - report_start)
             status.utilization = utilization
+
+            # Periodically report my status to schedulers with the utilization
+            # set.
+            utils.push_status(schedulers, pusher_cache, status)
 
             logging.info('Total thread occupancy: %.6f' % (utilization))
 
@@ -310,6 +313,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             else:
                 logging.info(stats)
 
+            status.ClearField('utilization')
             report_start = time.time()
             total_occupancy = 0.0
 

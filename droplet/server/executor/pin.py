@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import datetime
 import logging
 import sys
 
@@ -33,14 +34,15 @@ def pin(pin_socket, pusher_cache, kvs, status, pinned_functions, runtimes,
         sckt.send(sutils.error.SerializeToString())
         return
 
-    logging.info('Adding function %s to my local pinned functions.' % (name))
     sckt.send(sutils.ok_resp)
 
     func = utils.retrieve_function(name, kvs)
+    logging.info('Func retrieve returned')
 
     # The function must exist -- because otherwise the DAG couldn't be
     # registered -- so we keep trying to retrieve it.
     while not func:
+        logging.info('Retrying func retrieve')
         func = utils.retrieve_function(name, kvs)
 
     if name not in pinned_functions:
@@ -50,6 +52,8 @@ def pin(pin_socket, pusher_cache, kvs, status, pinned_functions, runtimes,
     # Add metadata tracking for the newly pinned functions.
     runtimes[name] = []
     exec_counts[name] = 0
+    logging.info('Adding function %s to my local pinned functions.' % (name))
+    logging.info('%s' % (str(pinned_functions)))
 
 
 def unpin(unpin_socket, status, pinned_functions, runtimes, exec_counts):

@@ -84,7 +84,7 @@ class DropletConnection():
 
         self.response_sock = self.context.socket(zmq.PULL)
         response_port = 9000 + tid
-        self.response_sock.setsockopt(zmq.RCVTIMEO, 1000)
+        self.response_sock.setsockopt(zmq.RCVTIMEO, 10000)
         self.response_sock.bind('tcp://*:' + str(response_port))
 
         self.response_address = 'tcp://' + ip + ':' + str(response_port)

@@ -53,16 +53,12 @@ class DropletUserLibrary(AbstractDropletUserLibrary):
 
         self.pusher_cache = pusher_cache
 
+        self.address = sutils.BIND_ADDR_TEMPLATE % (sutils.RECV_INBOX_PORT +
+                                                    self.executor_tid)
+
         # Socket on which inbound messages, if any, will be received.
         self.recv_inbox_socket = context.socket(zmq.PULL)
-        self.recv_inbox_socket.bind(sutils.BIND_ADDR_TEMPLATE %
-                                    (sutils.RECV_INBOX_PORT +
-                                     self.executor_tid))
-
-    def __enter__(self):
-        # This method is here for use with the `with` syntax, but we do not
-        # need to do anything with it.
-        pass
+        self.recv_inbox_socket.bind(self.address)
 
     def put(self, ref, value):
         return self.anna_client.put(ref, serializer.dump_lattice(value))
@@ -119,8 +115,7 @@ class DropletUserLibrary(AbstractDropletUserLibrary):
 
         return res
 
-    def __exit__(self, ex_type, ex_value, tb):
-        # Close the open socket for this particular request. It will be
-        # reopened if another request comes in. This prevents pollution of
-        # messages across requests.
-        self.recv_inbox_socket.close()
+    def close(self):
+        # Closes the context for this request by clearing any outstanding
+        # messages.
+        self.recv()
