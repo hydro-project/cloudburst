@@ -30,7 +30,7 @@ def retrieve_function(name, kvs, consistency=NORMAL):
         # This means that the function is stored in an LWWPairLattice.
         lattice = kvs.get(kvs_name)[kvs_name]
         if lattice:
-            return serializer.load_lattice(lattice)
+            result = serializer.load_lattice(lattice)
         else:
             return None
     else:
@@ -41,9 +41,20 @@ def retrieve_function(name, kvs, consistency=NORMAL):
         if lattice:
             # If there are multiple concurrent values, we arbitrarily pick the
             # first one listed.
-            return serializer.load_lattice(lattice)[0]
+            result = serializer.load_lattice(lattice)[0]
         else:
             return None
+
+    # Check to see if the result is a tuple. This means that the first object
+    # in the tuple is a class that we can initialize, and the second value is a
+    # set of initialization args. Otherwise, we just return the retrieved
+    # function.
+    if type(result) == tuple:
+        cls = result[0]
+        obj = cls(*result[1])
+        result = obj.run
+
+    return result
 
 
 def push_status(schedulers, pusher_cache, status):

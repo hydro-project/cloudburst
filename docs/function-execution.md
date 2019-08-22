@@ -35,6 +35,28 @@ True # returns False if registration fails, e.g., if one of the referenced funct
 * DAGs can have arbitrary branches and connections and have multiple sources, but there must be only one sink function in the DAG. The result of this sink function is what is returned to the caller.
 * For those familiar with the Anna KVS, all use of lattices is abstracted away from the Droplet user. The serialization and deserialization is done automatically by the runtime, and only Python values are passed into and out of all API functions.
 
+## Registering and Executing Classes
+
+Some functions require preinitialization that can be potentially expensive (e.g., loading a machine learning model).
+Instead of repeating this expensive initialization process on every request, users can also register a Python class with the runtime instead of a function.
+When this class is initialized as part of a DAG<sup>1</sup>, the initialized state will persist until the resources are deallocated
+When registering a class, the client expects a tuple with two arguments: The first is the class itself, and the second is the set of initialization arguments.
+The class itself must have a `run` method, which will be invoked for each request.
+The example below shows the expected structure.
+
+```python3
+class Expensive:
+  def __init__(self, arg):
+    expensive_operation(arg)
+
+  def run(self, arg):
+    # ... do some work ...
+    return result 
+
+cloud.register((Expensive, init_arg), 'expensive_class')
+```
+
+<sup>1</sup> Note that the benefits of using a class will not work with one-shot function execution, as the class will be reinitialized for each request.
 
 ## Droplet User Library
 
