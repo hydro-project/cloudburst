@@ -39,7 +39,7 @@ True # returns False if registration fails, e.g., if one of the referenced funct
 
 Some functions require preinitialization that can be potentially expensive (e.g., loading a machine learning model).
 Instead of repeating this expensive initialization process on every request, users can also register a Python class with the runtime instead of a function.
-This class will be initialized as a part of a DAG<sup>1</sup>, and the initialized state will persist until the resources are deallocated.
+When this class is initialized as part of a DAG<sup>1</sup>, the initialized state will persist until the resources are deallocated
 When registering a class, the client expects a tuple with two arguments: The first is the class itself, and the second is the set of initialization arguments.
 The class itself must have a `run` method, which will be invoked for each request.
 The example below shows the expected structure.

@@ -52,7 +52,7 @@ def retrieve_function(name, kvs, consistency=NORMAL):
     if type(result) == tuple:
         cls = result[0]
         obj = cls(*result[1])
-        result = cls.run
+        result = obj.run
 
     return result
 
