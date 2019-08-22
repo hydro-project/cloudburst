@@ -119,8 +119,10 @@ class DropletConnection():
 
     def register(self, function, name):
         '''
-        Registers a new function with the system. The returned object can be
-        called like a regular Python function, which returns a Droplet Future.
+        Registers a new function or class with the system. The returned object
+        can be called like a regular Python function, which returns a Droplet
+        Future. If the input is a class, the class is expected to have a run
+        method, which is what is invoked at runtime.
 
         function: The function object that we are registering.
         name: A unique name for the function to be stored with in the system.
