@@ -339,6 +339,44 @@ class TestExecutorCall(unittest.TestCase):
         # Check that the output is equal to a local function execution.
         self.assertEqual(result, func('', arg_value))
 
+    def test_exec_class_function(self):
+        '''
+        Tests creating and executing a class method in normal mode, ensuring
+        that no messages are sent outside of the system and that the serialized
+        result is as expected.
+        '''
+        # Create the function and put it into the KVS.
+        class Test:
+            def __init__(self, num):
+                self.num = num
+
+            def run(self, droplet, inp):
+                return inp + self.num
+
+        fname = 'class'
+        init_arg = 3
+        arg = 2
+
+        # Put the function into the KVS and create a function call.
+        create_function((Test, (init_arg,)), self.kvs_client, fname)
+        call = self._create_function_call(fname, [arg], NORMAL)
+        self.socket.inbox.append(call.SerializeToString())
+
+        # Execute the function call.
+        exec_function(self.socket, self.kvs_client, self.user_library, {})
+
+        # Assert that there have been 0 messages sent.
+        self.assertEqual(len(self.socket.outbox), 0)
+
+        # Retrieve the result, ensure it is a LWWPairLattice, then deserialize
+        # it.
+        result = self.kvs_client.get(self.response_key)[self.response_key]
+        self.assertEqual(type(result), LWWPairLattice)
+        result = serializer.load_lattice(result)
+
+        # Check that the output is equal to a local function execution.
+        self.assertEqual(result, Test(init_arg).run('', arg))
+
     ''' DAG FUNCTION EXECUTION TESTS '''
 
     def test_exec_dag_sink(self):
