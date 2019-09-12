@@ -52,6 +52,7 @@ class TestExecutorPin(unittest.TestCase):
         '''
         # Create a new function in the KVS.
         fname = 'incr'
+
         def func(_, x): return x + 1
         create_function(func, self.kvs_client, fname)
 
@@ -84,6 +85,7 @@ class TestExecutorPin(unittest.TestCase):
         '''
         # Create a new function in the KVS.
         fname = 'incr'
+
         def func(_, x): return x + 1
         create_function(func, self.kvs_client, fname)
 
@@ -123,6 +125,7 @@ class TestExecutorPin(unittest.TestCase):
         '''
         # Add an already pinned_function.
         fname = 'square'
+
         def square(_, x): x * x
         self.pinned_functions[fname] = square
         self.runtimes[fname] = []

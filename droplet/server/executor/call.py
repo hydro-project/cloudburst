@@ -17,7 +17,6 @@ import time
 
 from anna.lattices import (
     Lattice,
-    LWWPairLattice,
     MapLattice,
     MultiKeyCausalLattice,
     SetLattice,
@@ -131,15 +130,16 @@ def _resolve_ref_normal(refs, kvs, cache):
     if len(keys) != 0:
         returned_kv_pairs = kvs.get(keys)
 
-        # When chaining function executions, we must wait, so we check to see if
-        # certain values have not been resolved yet.
+        # When chaining function executions, we must wait, so we check to see
+        # if certain values have not been resolved yet.
         while None in returned_kv_pairs.values():
             returned_kv_pairs = kvs.get(keys)
 
         for key in keys:
-            # Because references might be repeated, we check to make sure that we
-            # haven't already deserialized this ref.
-            if deserialize_map[key] and isinstance(returned_kv_pairs[key], Lattice):
+            # Because references might be repeated, we check to make sure that
+            # we haven't already deserialized this ref.
+            if deserialize_map[key] and isinstance(returned_kv_pairs[key],
+                                                   Lattice):
                 kv_pairs[key] = serializer.load_lattice(returned_kv_pairs[key])
             else:
                 kv_pairs[key] = returned_kv_pairs[key]

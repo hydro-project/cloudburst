@@ -84,31 +84,31 @@ def run(droplet_client, num_requests, create, sckt):
             sys.exit(1)
 
         # for the hot version
-        # oid = str(uuid.uuid4())
-        # arr = np.random.randn(OSIZE)
-        # droplet_client.put_object(oid, arr)
-        # droplet_client.put_object(kvs_key, [oid])
+        oid = str(uuid.uuid4())
+        arr = np.random.randn(OSIZE)
+        droplet_client.put_object(oid, arr)
+        droplet_client.put_object(kvs_key, [oid])
 
         return [], [], [], 0
 
     else:
         ''' RUN DAG '''
 
-        num_data_objects = num_requests * 10 # for the cold version
-        oids = []
-        for i in range(num_data_objects):
-            if i % 100 == 0:
-                logging.info('On object %d.' % (i))
+        # num_data_objects = num_requests * 10 # for the cold version
+        # oids = []
+        # for i in range(num_data_objects):
+        #     if i % 100 == 0:
+        #         logging.info('On object %d.' % (i))
 
-            array = np.random.rand(OSIZE)
-            oid = str(uuid.uuid4())
-            droplet_client.put_object(oid, array)
-            oids.append(oid)
+        #     array = np.random.rand(OSIZE)
+        #     oid = str(uuid.uuid4())
+        #     droplet_client.put_object(oid, array)
+        #     oids.append(oid)
 
-        logging.info('Finished creating data!')
+        # logging.info('Finished creating data!')
 
         # for the hot version
-        # oids = droplet_client.get_object(kvs_key)
+        oids = droplet_client.get_object(kvs_key)
 
         total_time = []
         scheduler_time = []
@@ -123,15 +123,15 @@ def run(droplet_client, num_requests, create, sckt):
 
         for i in range(num_requests):
             refs = []
-            for ref in oids[(i * 10):(i * 10) + 10]: # for the cold version
-                refs.append(DropletReference(ref, True))
-            # for _ in range(10):  # for the hot version
-            #     refs.append(DropletReference(oids[0], True))
+            # for ref in oids[(i * 10):(i * 10) + 10]: # for the cold version
+            #     refs.append(DropletReference(ref, True))
+            for _ in range(10):  # for the hot version
+                refs.append(DropletReference(oids[0], True))
 
             start = time.time()
             arg_map = {'dot': refs}
 
-            resp = droplet_client.call_dag(dag_name, arg_map, True)
+            droplet_client.call_dag(dag_name, arg_map, True)
             end = time.time()
 
             epoch_total.append(end - start)

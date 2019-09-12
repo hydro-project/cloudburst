@@ -267,33 +267,33 @@ def scheduler(ip, mgmt_ip, route_addr):
                         (sched_ip))
                     sckt.send(msg)
 
-            # stats = ExecutorStatistics()
-            # for fname in call_frequency:
-            #     fstats = stats.functions.add()
-            #     fstats.name = fname
-            #     fstats.call_count = call_frequency[fname]
-            #     logging.info('Reporting %d calls for function %s.' %
-            #                  (call_frequency[fname], fname))
+            stats = ExecutorStatistics()
+            for fname in call_frequency:
+                fstats = stats.functions.add()
+                fstats.name = fname
+                fstats.call_count = call_frequency[fname]
+                logging.info('Reporting %d calls for function %s.' %
+                             (call_frequency[fname], fname))
 
-            #     call_frequency[fname] = 0
+                call_frequency[fname] = 0
 
-            # for dname in interarrivals:
-            #     dstats = stats.dags.add()
-            #     dstats.name = dname
-            #     dstats.call_count = len(interarrivals[dname]) + 1
-            #     dstats.interarrival.extend(interarrivals[dname])
+            for dname in interarrivals:
+                dstats = stats.dags.add()
+                dstats.name = dname
+                dstats.call_count = len(interarrivals[dname]) + 1
+                dstats.interarrival.extend(interarrivals[dname])
 
-            #     interarrivals[dname].clear()
+                interarrivals[dname].clear()
 
-            # # We only attempt to send the statistics if we are running in
-            # # cluster mode. If we are running in local mode, we write them to
-            # # the local log file.
-            # if mgmt_ip:
-            #     sckt = pusher_cache.get(sutils.get_statistics_report_address
-            #                             (mgmt_ip))
-            #     sckt.send(stats.SerializeToString())
-            # else:
-            #     logging.info(str(stats))
+            # We only attempt to send the statistics if we are running in
+            # cluster mode. If we are running in local mode, we write them to
+            # the local log file.
+            if mgmt_ip:
+                sckt = pusher_cache.get(sutils.get_statistics_report_address
+                                        (mgmt_ip))
+                sckt.send(stats.SerializeToString())
+            else:
+                logging.info(str(stats))
 
             start = time.time()
 

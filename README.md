@@ -8,7 +8,7 @@ Droplet is a low-latency, stateful serverless programming framework built on top
 
 ## Getting Started
 
-You can install Droplet's dependencies with `pip` and use the bash scripts included in this repository to run the system locally. You can find the Droplet client in `droplet/client/client.py`. We are working on adding comprehensive documentation for the client interface, which will be available soon. An example interaction is modeled below.
+You can install Droplet's dependencies with `pip` and use the bash scripts included in this repository to run the system locally. You can find the Droplet client in `droplet/client/client.py`. Full documentation on starting a cluster in local mode can be found [here](docs/local-mode.md); documentation for the Droplet client can be found [here](docs/function-execution.md). An example interaction is modeled below.
 
 ```bash
 $ pip install -r requirements.txt
