@@ -265,7 +265,7 @@ class DefaultDropletSchedulerPolicy(BaseDropletSchedulerPolicy):
 
         # If the executor thread is overutilized, we add it to the backoff set
         # and ignore it for a period of time.
-        if status.utilization > 0.7:
+        if status.utilization > 0.70:
             self.backoff[key] = time.time()
 
     def update(self):

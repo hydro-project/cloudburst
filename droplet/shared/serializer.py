@@ -138,8 +138,8 @@ class Serializer():
             # We assume that we will use the default vector clock for causal
             # metadata.
             data = SetLattice({self.dump(value)})
-            result = MultiKeyCausalLattice(DEFAULT_VC, 
-                                           MapLattice(causal_dependencies), 
+            result = MultiKeyCausalLattice(DEFAULT_VC,
+                                           MapLattice(causal_dependencies),
                                            data)
         else:
             raise ValueError(f'Unexpected lattice type: {str(typ)}')

@@ -12,8 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import uuid
 import time
+import uuid
 
 from droplet.server.scheduler import utils
 import droplet.server.utils as sutils
@@ -88,7 +88,15 @@ def call_dag(call, pusher_cache, dags, policy):
 
         refs = list(filter(lambda arg: type(arg) == DropletReference,
                            map(lambda arg: serializer.load(arg), args)))
-        ip, tid = policy.pick_executor(refs, fname)
+
+        result = policy.pick_executor(refs, fname)
+        if result is None:
+            response = GenericResponse()
+            response.success = False
+            response.error = NO_RESOURCES
+            return response
+
+        ip, tid = result
         schedule.locations[fname] = ip + ':' + str(tid)
 
         # copy over arguments into the dag schedule
@@ -120,7 +128,11 @@ def call_dag(call, pusher_cache, dags, policy):
         sckt = pusher_cache.get(ip)
         sckt.send(trigger.SerializeToString())
 
+    response = GenericResponse()
+    response.success = True
     if schedule.output_key:
-        return schedule.output_key
+        response.response_id = schedule.output_key
     else:
-        return schedule.id
+        response.response_id = schedule.id
+
+    return response

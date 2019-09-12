@@ -53,7 +53,7 @@ from droplet.shared.utils import (
     LIST_PORT
 )
 
-METADATA_THRESHOLD = 3
+METADATA_THRESHOLD = 5
 REPORT_THRESHOLD = 5
 
 logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO,
@@ -186,12 +186,8 @@ def scheduler(ip, mgmt_ip, route_addr):
             for fname in dag[0].functions:
                 call_frequency[fname] += 1
 
-            rid = call_dag(call, pusher_cache, dags, policy)
-
-            resp = GenericResponse()
-            resp.success = True
-            resp.response_id = rid
-            dag_call_socket.send(resp.SerializeToString())
+            response = call_dag(call, pusher_cache, dags, policy)
+            dag_call_socket.send(response.SerializeToString())
 
         if (dag_delete_socket in socks and socks[dag_delete_socket] ==
                 zmq.POLLIN):
@@ -223,11 +219,11 @@ def scheduler(ip, mgmt_ip, route_addr):
             for dname in status.dags:
                 if dname not in dags:
                     payload = kvs.get(dname)
-                    while not payload:
+                    while None in payload:
                         payload = kvs.get(dname)
 
                     dag = Dag()
-                    dag.ParseFromString(payload.reveal())
+                    dag.ParseFromString(payload[dname].reveal())
                     dags[dag.name] = (dag, sched_utils.find_dag_source(dag))
 
                     for fname in dag.functions:
@@ -297,7 +293,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                                         (mgmt_ip))
                 sckt.send(stats.SerializeToString())
             else:
-                logging.info(stats)
+                logging.info(str(stats))
 
             start = time.time()
 

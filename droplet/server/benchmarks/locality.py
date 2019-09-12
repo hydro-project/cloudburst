@@ -22,7 +22,7 @@ import cloudpickle as cp
 import numpy as np
 
 from droplet.server.benchmarks import utils
-from droplet.shared.proto.droplet_pb2 import DropletError
+from droplet.shared.proto.droplet_pb2 import DropletError, DAG_ALREADY_EXISTS
 from droplet.shared.reference import DropletReference
 
 sys_random = random.SystemRandom()
@@ -79,8 +79,7 @@ def run(droplet_client, num_requests, create, sckt):
         connections = []
         success, error = droplet_client.register_dag(dag_name, functions,
                                                      connections)
-
-        if not success:
+        if not success and error != DAG_ALREADY_EXISTS:
             print('Failed to register DAG: %s' % (DropletError.Name(error)))
             sys.exit(1)
 
@@ -96,7 +95,6 @@ def run(droplet_client, num_requests, create, sckt):
         ''' RUN DAG '''
 
         # num_data_objects = num_requests * 10 # for the cold version
-
         # oids = []
         # for i in range(num_data_objects):
         #     if i % 100 == 0:

@@ -43,7 +43,7 @@ from tests.server.utils import (
 )
 
 serializer = Serializer()
-logging.disable()
+logging.disable(logging.CRITICAL)
 
 
 class TestExecutorCall(unittest.TestCase):

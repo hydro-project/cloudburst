@@ -83,7 +83,7 @@ def create_dag(dag_create_socket, pusher_cache, kvs, dags, policy,
             # The policy engine will only return False if it ran out of
             # resources on which to attempt to pin this function.
             if not success:
-                logging.info(f'Creating DAG {dag.name} failed due to' +
+                logging.info(f'Creating DAG {dag.name} failed due to ' +
                              'insufficient resources.')
                 sutils.error.error = NO_RESOURCES
                 dag_create_socket.send(sutils.error.SerializeToString())

@@ -33,7 +33,6 @@ def pin(pin_socket, pusher_cache, kvs, status, pinned_functions, runtimes,
         sckt.send(sutils.error.SerializeToString())
         return
 
-    logging.info('Adding function %s to my local pinned functions.' % (name))
     sckt.send(sutils.ok_resp)
 
     func = utils.retrieve_function(name, kvs)
@@ -50,6 +49,7 @@ def pin(pin_socket, pusher_cache, kvs, status, pinned_functions, runtimes,
     # Add metadata tracking for the newly pinned functions.
     runtimes[name] = []
     exec_counts[name] = 0
+    logging.info('Adding function %s to my local pinned functions.' % (name))
 
 
 def unpin(unpin_socket, status, pinned_functions, runtimes, exec_counts):
