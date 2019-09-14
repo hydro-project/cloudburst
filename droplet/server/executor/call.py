@@ -42,9 +42,11 @@ def exec_function(exec_socket, kvs, user_library, cache):
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
 
+    logging.info('Calling %s!' % (call.name))
+
     fargs = [serializer.load(arg) for arg in call.arguments.values]
 
-    f = utils.retrieve_function(call.name, kvs, call.consistency)
+    f = utils.retrieve_function(call.name, kvs, user_library, call.consistency)
     if not f:
         logging.info('Function %s not found! Returning an error.' %
                      (call.name))
@@ -54,6 +56,8 @@ def exec_function(exec_socket, kvs, user_library, cache):
         try:
             if call.consistency == NORMAL:
                 result = _exec_func_normal(kvs, f, fargs, user_library, cache)
+                logging.info('Finished executing %s: %s!' % (call.name,
+                                                             str(result)))
             else:
                 dependencies = {}
                 result = _exec_func_causal(kvs, f, fargs, user_library,
@@ -142,7 +146,7 @@ def _resolve_ref_normal(refs, kvs, cache):
                                                    Lattice):
                 kv_pairs[key] = serializer.load_lattice(returned_kv_pairs[key])
             else:
-                kv_pairs[key] = returned_kv_pairs[key]
+                kv_pairs[key] = returned_kv_pairs[key].reveal()
             # Cache the deserialized payload for future use
             cache[key] = kv_pairs[key]
 
@@ -194,6 +198,8 @@ def _resolve_ref_causal(refs, kvs, schedule, key_version_locations,
                 raise ValueError(('Invalid lattice type %s encountered when' +
                                  ' executing in causal mode.') %
                                  str(type(kv_pairs[key])))
+        else:
+            kv_pairs[key] = kv_pairs[key].reveal()
 
     return kv_pairs
 

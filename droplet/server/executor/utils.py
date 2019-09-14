@@ -23,7 +23,7 @@ EXECUTOR_DEPART_PORT = 7005
 CACHE_VERISON_GC_PORT = 7200
 
 
-def retrieve_function(name, kvs, consistency=NORMAL):
+def retrieve_function(name, kvs, user_library, consistency=NORMAL):
     kvs_name = sutils.get_func_kvs_name(name)
 
     if consistency == NORMAL:
@@ -51,7 +51,7 @@ def retrieve_function(name, kvs, consistency=NORMAL):
     # function.
     if type(result) == tuple:
         cls = result[0]
-        obj = cls(*result[1])
+        obj = cls(user_library, *result[1])
         result = obj.run
 
     return result

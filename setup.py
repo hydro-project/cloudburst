@@ -15,6 +15,7 @@
 from distutils.core import setup
 import os
 from setuptools.command.install import install
+from setuptools import find_packages
 
 
 class InstallWrapper(install):
@@ -40,7 +41,7 @@ class InstallWrapper(install):
 setup(
         name='Droplet',
         version='0.1.0',
-        packages=['droplet', ],
+        packages=find_packages(),
         license='Apache v2',
         long_description='The Droplet Client and Server',
         install_requires=['zmq', 'protobuf', 'anna'],

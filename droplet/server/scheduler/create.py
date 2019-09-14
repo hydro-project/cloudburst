@@ -56,7 +56,7 @@ def create_function(func_create_socket, kvs, consistency=NORMAL):
 
 
 def create_dag(dag_create_socket, pusher_cache, kvs, dags, policy,
-               call_frequency, num_replicas=1):
+               call_frequency, num_replicas=5):
     serialized = dag_create_socket.recv()
 
     dag = Dag()
