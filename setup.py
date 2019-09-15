@@ -12,8 +12,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from distutils.core import setup
 import os
+import setuptools
+
+from distutils.core import setup
 from setuptools.command.install import install
 
 
@@ -40,7 +42,7 @@ class InstallWrapper(install):
 setup(
         name='Droplet',
         version='0.1.0',
-        packages=['droplet', ],
+        packages=setuptools.find_packages(),
         license='Apache v2',
         long_description='The Droplet Client and Server',
         install_requires=['zmq', 'protobuf', 'anna'],
