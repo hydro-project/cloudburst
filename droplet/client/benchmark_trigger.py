@@ -24,7 +24,7 @@ from droplet.server.benchmarks import utils
 logging.basicConfig(filename='log_trigger.txt', level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
-NUM_THREADS = 4
+NUM_THREADS = 3
 
 ips = []
 with open('bench_ips.txt', 'r') as f:
@@ -56,8 +56,8 @@ else:
             sckt.send_string(msg)
             sent_msgs += 1
 
-epoch_total = []
-total = []
+reads = []
+writes = []
 end_recv = 0
 
 epoch_recv = 0
@@ -71,34 +71,29 @@ while end_recv < sent_msgs:
     if b'END' in msg:
         end_recv += 1
     else:
-        msg = cp.loads(msg)
+        new_reads, new_writes = cp.loads(msg)
+        reads += new_reads
+        writes += new_writes
 
-        if type(msg) == tuple:
-            epoch_thruput += msg[0]
-            new_tot = msg[1]
-        else:
-            new_tot = msg
-
-        epoch_total += new_tot
-        total += new_tot
         epoch_recv += 1
 
-        if epoch_recv == sent_msgs:
-            epoch_end = time.time()
-            elapsed = epoch_end - epoch_start
-            thruput = epoch_thruput / elapsed
+        logging.info('\n\n*** EPOCH %d ***' % (epoch))
+        utils.print_latency_stats(reads, 'reads', True)
+        utils.print_latency_stats(writes, 'writes', True)
 
-            logging.info('\n\n*** EPOCH %d ***' % (epoch))
-            logging.info('\tTHROUGHPUT: %.2f' % (thruput))
-            utils.print_latency_stats(epoch_total, 'E2E', True)
+        # if epoch_recv == sent_msgs:
+        #     epoch_end = time.time()
+        #     elapsed = epoch_end - epoch_start
 
-            epoch_recv = 0
-            epoch_thruput = 0
-            epoch_total.clear()
-            epoch_start = time.time()
-            epoch += 1
+        #     logging.info('\n\n*** EPOCH %d ***' % (epoch))
+        #     utils.print_latency_stats(reads, 'reads', True)
+        #     utils.print_latency_stats(writes, 'writes', True)
+
+        #     epoch_recv = 0
+        #     epoch_start = time.time()
+        #     epoch += 1
 
 logging.info('*** END ***')
 
-if len(total) > 0:
-    utils.print_latency_stats(total, 'E2E', True)
+utils.print_latency_stats(reads, 'reads', True)
+utils.print_latency_stats(writes, 'writes', True)

@@ -24,6 +24,7 @@ from droplet.server.benchmarks import (
     lambda_locality,
     mobilenet,
     predserving,
+    retwis_benchmark,
     scaling,
     utils
 )
@@ -74,6 +75,10 @@ def run_bench(bname, num_requests, droplet, kvs, sckt, create=False):
         total, scheduler, kvs, retries = lambda_locality.run(bname, kvs,
                                                              num_requests,
                                                              sckt)
+    elif bname == 'retwis':
+        logging.info("Calling retwis_benchmark.run().")
+        total, scheduler, kvs, retries = retwis_benchmark.run(droplet, num_requests,
+                                                         sckt)
     elif bname == 'predserving':
         total, scheduler, kvs, retries = predserving.run(droplet, num_requests,
                                                          sckt)
