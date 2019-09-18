@@ -38,7 +38,7 @@ from droplet.shared.serializer import Serializer
 serializer = Serializer()
 
 
-def exec_function(exec_socket, kvs, user_library, cache):
+def exec_function(exec_socket, kvs, user_library, cache, function_cache):
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
 
@@ -46,13 +46,18 @@ def exec_function(exec_socket, kvs, user_library, cache):
 
     fargs = [serializer.load(arg) for arg in call.arguments.values]
 
-    f = utils.retrieve_function(call.name, kvs, user_library, call.consistency)
+    if call.name in function_cache:
+        f = function_cache[call.name]
+    else:
+        f = utils.retrieve_function(call.name, kvs, user_library, call.consistency)
+
     if not f:
         logging.info('Function %s not found! Returning an error.' %
                      (call.name))
         sutils.error.error = FUNC_NOT_FOUND
         result = ('ERROR', sutils.error.SerializeToString())
     else:
+        function_cache[call.name] = f
         try:
             if call.consistency == NORMAL:
                 result = _exec_func_normal(kvs, f, fargs, user_library, cache)
@@ -147,6 +152,7 @@ def _resolve_ref_normal(refs, kvs, cache):
                 kv_pairs[key] = serializer.load_lattice(returned_kv_pairs[key])
             else:
                 kv_pairs[key] = returned_kv_pairs[key].reveal()
+
             # Cache the deserialized payload for future use
             cache[key] = kv_pairs[key]
 

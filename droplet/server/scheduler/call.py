@@ -12,7 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import time
 import uuid
 
@@ -104,7 +103,6 @@ def call_dag(call, pusher_cache, dags, policy):
         arg_list = schedule.arguments[fname]
         arg_list.values.extend(args)
 
-    logging.info(str(schedule))
     for fname in dag.functions:
         loc = schedule.locations[fname].split(':')
         ip = utils.get_queue_address(loc[0], loc[1])

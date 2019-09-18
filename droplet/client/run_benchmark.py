@@ -20,11 +20,9 @@ import sys
 
 from droplet.client.client import DropletConnection
 from droplet.server.benchmarks import (
-    centr_avg,
     composition,
     dist_avg,
     locality,
-    mobilenet,
     predserving,
     scaling,
     summa,
@@ -57,17 +55,11 @@ elif bname == 'locality':
     locality.run(droplet_client, num_requests, True, None)
     total, scheduler, kvs, retries = locality.run(droplet_client, num_requests,
                                                   False, None)
-elif bname == 'mobilenet':
-    total, scheduler, kvs, retries = mobilenet.run(droplet_client, num_requests,
-                                                   None)
 elif bname == 'pred_serving':
     total, scheduler, kvs, retries = predserving.run(droplet_client,
                                                      num_requests, None)
 elif bname == 'avg':
     total, scheduler, kvs, retries = dist_avg.run(droplet_client, num_requests,
-                                                   None)
-elif bname == 'center_avg':
-    total, scheduler, kvs, retries = centr_avg.run(droplet_client, num_requests,
                                                   None)
 elif bname == 'summa':
     total, scheduler, kvs, retries = summa.run(droplet_client, num_requests,

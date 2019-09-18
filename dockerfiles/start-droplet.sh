@@ -83,6 +83,6 @@ elif [[ "$ROLE" = "benchmark" ]]; then
   echo "    droplet_address: $FUNCTION_ADDR" >> conf/droplet-config.yml
   echo "    thread_id: $THREAD_ID" >> conf/droplet-config.yml
 
-  python3.6 droplet/server/benchmark/server.py
+  python3.6 droplet/server/benchmarks/server.py
 fi
 

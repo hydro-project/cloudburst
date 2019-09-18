@@ -12,8 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from distutils.core import setup
 import os
+
+from distutils.core import setup
 from setuptools.command.install import install
 from setuptools import find_packages
 

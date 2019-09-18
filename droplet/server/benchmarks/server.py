@@ -22,7 +22,6 @@ from droplet.server.benchmarks import (
     composition,
     locality,
     lambda_locality,
-    mobilenet,
     predserving,
     scaling,
     utils
@@ -77,9 +76,6 @@ def run_bench(bname, num_requests, droplet, kvs, sckt, create=False):
     elif bname == 'predserving':
         total, scheduler, kvs, retries = predserving.run(droplet, num_requests,
                                                          sckt)
-    elif bname == 'mobilenet':
-        total, scheduler, kvs, retries = mobilenet.run(droplet, num_requests,
-                                                       sckt)
     elif bname == 'scaling':
         total, scheduler, kvs, retries = scaling.run(droplet, num_requests,
                                                      sckt, create)

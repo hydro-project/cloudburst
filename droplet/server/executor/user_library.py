@@ -75,10 +75,14 @@ class DropletUserLibrary(AbstractDropletUserLibrary):
         # Deserialize each of the lattice objects and return them to the
         # client.
         for key in kv_pairs:
-            if deserialize:
-                result[key] = serializer.load_lattice(kv_pairs[key])
+            if kv_pairs[key] is None:
+                # If the key is not in the kvs, we can just return None.
+                result[key] = None
             else:
-                result[key] = kv_pairs[key].reveal()
+                if deserialize:
+                    result[key] = serializer.load_lattice(kv_pairs[key])
+                else:
+                    result[key] = kv_pairs[key]
 
         if type(ref) == list:
             return result
