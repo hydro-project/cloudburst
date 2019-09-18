@@ -35,7 +35,7 @@ sys_random = random.SystemRandom()
 class DefaultDropletSchedulerPolicy(BaseDropletSchedulerPolicy):
 
     def __init__(self, pin_accept_socket, pusher_cache, kvs_client, ip,
-                 random_threshold=0.20):
+                 random_threshold=0.0):
         # This scheduler's IP address.
         self.ip = ip
 
@@ -145,7 +145,7 @@ class DefaultDropletSchedulerPolicy(BaseDropletSchedulerPolicy):
         # Remove this IP/tid pair from the system's metadata until it notifies
         # us that it is available again, but only do this for non-DAG requests.
         if not function_name:
-            self.unpinned_executors.discard(max_ip)
+            pass
 
         return max_ip
 
@@ -266,7 +266,7 @@ class DefaultDropletSchedulerPolicy(BaseDropletSchedulerPolicy):
 
         # If the executor thread is overutilized, we add it to the backoff set
         # and ignore it for a period of time.
-        if status.utilization > 0.70:
+        if status.utilization > 1.00:
             self.backoff[key] = time.time()
 
     def update(self):
