@@ -42,9 +42,11 @@ def get_func_list(client, prefix, fullname=False):
 
 def put_func_list(client, funclist):
     # Convert to a set in order to remove duplicates.
-    funclist = set(funclist)
+    result = set()
+    for val in funclist:
+        result.add(bytes(val, 'utf-8'))
 
-    lattice = SetLattice(funclist)
+    lattice = SetLattice(result)
     client.put(FUNCOBJ, lattice)
 
 
