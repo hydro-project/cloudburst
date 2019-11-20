@@ -140,7 +140,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             work_start = time.time()
             pin(pin_socket, pusher_cache, client, status, pinned_functions,
-                runtimes, exec_counts)
+                runtimes, exec_counts, user_library)
             utils.push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start

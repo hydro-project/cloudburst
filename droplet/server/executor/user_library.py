@@ -26,7 +26,7 @@ class AbstractDropletUserLibrary:
         raise NotImplementedError
 
     # Retrives the lattice value at ref.
-    def get(self, ref, ltype):
+    def get(self, ref, deserialize=True):
         raise NotImplementedError
 
     # Sends a bytestring message to the specified destination.
@@ -63,19 +63,24 @@ class DropletUserLibrary(AbstractDropletUserLibrary):
     def put(self, ref, value):
         return self.anna_client.put(ref, serializer.dump_lattice(value))
 
-    def get(self, ref):
+    def get(self, ref, deserialize=True):
         if type(ref) != list:
             refs = [ref]
         else:
             refs = ref
 
+        print(refs)
         kv_pairs = self.anna_client.get(refs)
         result = {}
 
         # Deserialize each of the lattice objects and return them to the
         # client.
+        print(kv_pairs)
         for key in kv_pairs:
-            result[key] = serializer.load_lattice(kv_pairs[key])
+            if deserialize:
+                result[key] = serializer.load_lattice(kv_pairs[key])
+            else:
+                result[key] = kv_pairs[key].reveal()
 
         if type(ref) == list:
             return result

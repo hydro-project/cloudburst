@@ -44,7 +44,7 @@ def exec_function(exec_socket, kvs, user_library, cache):
 
     fargs = [serializer.load(arg) for arg in call.arguments.values]
 
-    f = utils.retrieve_function(call.name, kvs, call.consistency)
+    f = utils.retrieve_function(call.name, kvs, user_library, call.consistency)
     if not f:
         logging.info('Function %s not found! Returning an error.' %
                      (call.name))

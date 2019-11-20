@@ -20,7 +20,7 @@ from droplet.server.executor import utils
 
 
 def pin(pin_socket, pusher_cache, kvs, status, pinned_functions, runtimes,
-        exec_counts):
+        exec_counts, user_library):
     msg = pin_socket.recv_string()
     splits = msg.split(':')
 
@@ -35,12 +35,12 @@ def pin(pin_socket, pusher_cache, kvs, status, pinned_functions, runtimes,
 
     sckt.send(sutils.ok_resp)
 
-    func = utils.retrieve_function(name, kvs)
+    func = utils.retrieve_function(name, kvs, user_library)
 
     # The function must exist -- because otherwise the DAG couldn't be
     # registered -- so we keep trying to retrieve it.
     while not func:
-        func = utils.retrieve_function(name, kvs)
+        func = utils.retrieve_function(name, kvs, user_library)
 
     if name not in pinned_functions:
         pinned_functions[name] = func

@@ -347,7 +347,7 @@ class TestExecutorCall(unittest.TestCase):
         '''
         # Create the function and put it into the KVS.
         class Test:
-            def __init__(self, num):
+            def __init__(self, droplet, num):
                 self.num = num
 
             def run(self, droplet, inp):
@@ -375,7 +375,7 @@ class TestExecutorCall(unittest.TestCase):
         result = serializer.load_lattice(result)
 
         # Check that the output is equal to a local function execution.
-        self.assertEqual(result, Test(init_arg).run('', arg))
+        self.assertEqual(result, Test(None, init_arg).run('', arg))
 
     ''' DAG FUNCTION EXECUTION TESTS '''
 
