@@ -77,6 +77,9 @@ class DropletUserLibrary(AbstractDropletUserLibrary):
         # client.
         print(kv_pairs)
         for key in kv_pairs:
+        if kv_pairs[key] is None:
+            result[key] = None
+        else:
             if deserialize:
                 result[key] = serializer.load_lattice(kv_pairs[key])
             else:
