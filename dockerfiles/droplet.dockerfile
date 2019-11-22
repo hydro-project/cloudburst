@@ -38,7 +38,7 @@ WORKDIR /
 
 # These installations are currently pipeline specific until we figure out a
 # better way to do package management for Python.
-RUN pip3 install sklearn scikit-image pandas
+RUN pip3 install tensorflow scikit-image
 
 COPY start-droplet.sh /start-droplet.sh
 

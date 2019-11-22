@@ -44,7 +44,7 @@ class Serializer():
         if type(data) == bytes:
             val = Value()
             val.ParseFromString(data)
-        elif type(data) == Value:
+        elif type(data).__name__ == Value.__name__:
             # If it's already deserialized, we can just proceed.
             val = data
         else:

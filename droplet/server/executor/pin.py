@@ -19,8 +19,8 @@ import droplet.server.utils as sutils
 from droplet.server.executor import utils
 
 
-def pin(pin_socket, pusher_cache, kvs, status, pinned_functions, runtimes,
-        exec_counts):
+def pin(pin_socket, pusher_cache, kvs, status, function_cache, runtimes,
+        exec_counts, user_library):
     msg = pin_socket.recv_string()
     splits = msg.split(':')
 
@@ -28,22 +28,22 @@ def pin(pin_socket, pusher_cache, kvs, status, pinned_functions, runtimes,
     sckt = pusher_cache.get(sutils.get_pin_accept_port(resp_ip))
 
     # We currently only allow one pinned function per container.
-    if len(pinned_functions) > 0 or not status.running:
+    if len(function_cache) > 0 or not status.running:
         sutils.error.SerializeToString()
         sckt.send(sutils.error.SerializeToString())
         return
 
     sckt.send(sutils.ok_resp)
 
-    func = utils.retrieve_function(name, kvs)
+    func = utils.retrieve_function(name, kvs, user_library)
 
     # The function must exist -- because otherwise the DAG couldn't be
     # registered -- so we keep trying to retrieve it.
     while not func:
-        func = utils.retrieve_function(name, kvs)
+        func = utils.retrieve_function(name, kvs, user_library)
 
-    if name not in pinned_functions:
-        pinned_functions[name] = func
+    if name not in function_cache:
+        function_cache[name] = func
         status.functions.append(name)
 
     # Add metadata tracking for the newly pinned functions.
@@ -52,9 +52,9 @@ def pin(pin_socket, pusher_cache, kvs, status, pinned_functions, runtimes,
     logging.info('Adding function %s to my local pinned functions.' % (name))
 
 
-def unpin(unpin_socket, status, pinned_functions, runtimes, exec_counts):
+def unpin(unpin_socket, status, function_cache, runtimes, exec_counts):
     name = unpin_socket.recv_string()
-    if name not in pinned_functions:
+    if name not in function_cache:
         logging.info('Received an unpin request for an unknown function: %s.' %
                      (name))
         return

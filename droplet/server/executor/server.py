@@ -100,7 +100,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     queue = {}
 
     # Tracks the actual function objects that are pinned to this executor.
-    pinned_functions = {}
+    function_cache = {}
 
     # Tracks runtime cost of excuting a DAG function.
     runtimes = {}
@@ -139,8 +139,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             work_start = time.time()
-            pin(pin_socket, pusher_cache, client, status, pinned_functions,
-                runtimes, exec_counts)
+            pin(pin_socket, pusher_cache, client, status, function_cache,
+                runtimes, exec_counts, user_library)
             utils.push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -149,7 +149,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if unpin_socket in socks and socks[unpin_socket] == zmq.POLLIN:
             work_start = time.time()
-            unpin(unpin_socket, status, pinned_functions, runtimes,
+            unpin(unpin_socket, status, function_cache, runtimes,
                   exec_counts)
             utils.push_status(schedulers, pusher_cache, status)
 
@@ -159,7 +159,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
             work_start = time.time()
-            exec_function(exec_socket, client, user_library, cache)
+            exec_function(exec_socket, client, user_library, cache,
+                          function_cache)
             user_library.close()
 
             utils.push_status(schedulers, pusher_cache, status)
@@ -194,7 +195,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
                 exec_dag_function(pusher_cache, client,
                                   received_triggers[trkey],
-                                  pinned_functions[fname], schedule,
+                                  function_cache[fname], schedule,
                                   user_library, dag_runtimes, cache)
                 user_library.close()
 
@@ -232,7 +233,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 if len(received_triggers[key]) == len(schedule.triggers):
                     exec_dag_function(pusher_cache, client,
                                       received_triggers[key],
-                                      pinned_functions[fname], schedule,
+                                      function_cache[fname], schedule,
                                       user_library, dag_runtimes, cache)
                     user_library.close()
 
@@ -322,7 +323,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             for fname in queue:
                 if len(queue[fname]) == 0 and fname not in status.functions:
                     del queue[fname]
-                    del pinned_functions[fname]
+                    del function_cache[fname]
                     del runtimes[fname]
                     del exec_counts[fname]
 

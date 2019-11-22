@@ -15,6 +15,7 @@
 import unittest
 
 from droplet.server.executor.pin import pin, unpin
+from droplet.server.executor.user_library import DropletUserLibrary
 from droplet.shared.proto.droplet_pb2 import GenericResponse
 from droplet.shared.proto.internal_pb2 import ThreadStatus
 from tests.mock import kvs_client, zmq_utils
@@ -44,6 +45,10 @@ class TestExecutorPin(unittest.TestCase):
         self.runtimes = {}
         self.exec_counts = {}
 
+        self.user_library = DropletUserLibrary(zmq_utils.MockZmqContext(),
+                                               self.pusher_cache, self.ip, 0,
+                                               self.kvs_client)
+
     def test_succesful_pin(self):
         '''
         This test executes a pin operation that is supposed to be successful,
@@ -62,7 +67,8 @@ class TestExecutorPin(unittest.TestCase):
 
         # Execute the pin operation.
         pin(self.socket, self.pusher_cache, self.kvs_client, self.status,
-            self.pinned_functions, self.runtimes, self.exec_counts)
+            self.pinned_functions, self.runtimes, self.exec_counts,
+            self.user_library)
 
         # Check that the correct messages were sent and the correct metadata
         # created.
@@ -101,7 +107,8 @@ class TestExecutorPin(unittest.TestCase):
 
         # Execute the pin operation.
         pin(self.socket, self.pusher_cache, self.kvs_client, self.status,
-            self.pinned_functions, self.runtimes, self.exec_counts)
+            self.pinned_functions, self.runtimes, self.exec_counts,
+            self.user_library)
 
         # Check that the correct messages were sent and the correct metadata
         # created.
