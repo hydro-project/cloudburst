@@ -84,7 +84,7 @@ class TestExecutorCall(unittest.TestCase):
         self.socket.inbox.append(call.SerializeToString())
 
         # Execute the function call.
-        exec_function(self.socket, self.kvs_client, self.user_library, {})
+        exec_function(self.socket, self.kvs_client, self.user_library, {}, {})
 
         # Assert that there have been 0 messages sent.
         self.assertEqual(len(self.socket.outbox), 0)
@@ -115,7 +115,7 @@ class TestExecutorCall(unittest.TestCase):
         self.socket.inbox.append(call.SerializeToString())
 
         # Execute the function call.
-        exec_function(self.socket, self.kvs_client, self.user_library, {})
+        exec_function(self.socket, self.kvs_client, self.user_library, {}, {})
 
         # Assert that there have been 0 messages sent.
         self.assertEqual(len(self.socket.outbox), 0)
@@ -141,7 +141,7 @@ class TestExecutorCall(unittest.TestCase):
         self.socket.inbox.append(call.SerializeToString())
 
         # Attempt to execute the nonexistent function.
-        exec_function(self.socket, self.kvs_client, self.user_library, {})
+        exec_function(self.socket, self.kvs_client, self.user_library, {}, {})
 
         # Assert that there have been 0 messages sent.
         self.assertEqual(len(self.socket.outbox), 0)
@@ -179,7 +179,7 @@ class TestExecutorCall(unittest.TestCase):
         self.socket.inbox.append(call.SerializeToString())
 
         # Execute the function call.
-        exec_function(self.socket, self.kvs_client, self.user_library, {})
+        exec_function(self.socket, self.kvs_client, self.user_library, {}, {})
 
         # Retrieve the result from the KVS and ensure that it is the correct
         # lattice type.
@@ -218,7 +218,7 @@ class TestExecutorCall(unittest.TestCase):
         self.socket.inbox.append(call.SerializeToString())
 
         # Execute the function call.
-        exec_function(self.socket, self.kvs_client, self.user_library, {})
+        exec_function(self.socket, self.kvs_client, self.user_library, {}, {})
 
         # Assert that there have been 0 messages sent.
         self.assertEqual(len(self.socket.outbox), 0)
@@ -255,7 +255,7 @@ class TestExecutorCall(unittest.TestCase):
         self.socket.inbox.append(call.SerializeToString())
 
         # Execute the function call.
-        exec_function(self.socket, self.kvs_client, self.user_library, {})
+        exec_function(self.socket, self.kvs_client, self.user_library, {}, {})
 
         # Assert that there have been 0 messages sent.
         self.assertEqual(len(self.socket.outbox), 0)
@@ -292,7 +292,7 @@ class TestExecutorCall(unittest.TestCase):
         self.socket.inbox.append(call.SerializeToString())
 
         # Execute the function call.
-        exec_function(self.socket, self.kvs_client, self.user_library, {})
+        exec_function(self.socket, self.kvs_client, self.user_library, {}, {})
 
         # Assert that there have been 0 messages sent.
         self.assertEqual(len(self.socket.outbox), 0)
@@ -325,7 +325,7 @@ class TestExecutorCall(unittest.TestCase):
         self.socket.inbox.append(call.SerializeToString())
 
         # Execute the function call.
-        exec_function(self.socket, self.kvs_client, self.user_library, {})
+        exec_function(self.socket, self.kvs_client, self.user_library, {}, {})
 
         # Assert that there have been 0 messages sent.
         self.assertEqual(len(self.socket.outbox), 0)
@@ -347,7 +347,7 @@ class TestExecutorCall(unittest.TestCase):
         '''
         # Create the function and put it into the KVS.
         class Test:
-            def __init__(self, num):
+            def __init__(self, droplet, num):
                 self.num = num
 
             def run(self, droplet, inp):
@@ -363,7 +363,7 @@ class TestExecutorCall(unittest.TestCase):
         self.socket.inbox.append(call.SerializeToString())
 
         # Execute the function call.
-        exec_function(self.socket, self.kvs_client, self.user_library, {})
+        exec_function(self.socket, self.kvs_client, self.user_library, {}, {})
 
         # Assert that there have been 0 messages sent.
         self.assertEqual(len(self.socket.outbox), 0)
@@ -375,7 +375,7 @@ class TestExecutorCall(unittest.TestCase):
         result = serializer.load_lattice(result)
 
         # Check that the output is equal to a local function execution.
-        self.assertEqual(result, Test(init_arg).run('', arg))
+        self.assertEqual(result, Test(None, init_arg).run('', arg))
 
     ''' DAG FUNCTION EXECUTION TESTS '''
 

@@ -208,15 +208,16 @@ class DefaultDropletSchedulerPolicy(BaseDropletSchedulerPolicy):
         del self.pending_dags[dag_name]
 
     def discard_dag(self, dag, pending=False):
+        pinned_locations = []
         if pending:
-            # If the DAG was pending, we can simply look at the sequestered
-            # pending metadata.
-            pinned_locations = list(self.pending_dags[dag.name])
-            del self.pending_dags[dag.name]
+            if dag.name in self.pending_dags:
+                # If the DAG was pending, we can simply look at the sequestered
+                # pending metadata.
+                pinned_locations = list(self.pending_dags[dag.name])
+                del self.pending_dags[dag.name]
         else:
             # If the DAG was not pinned, we construct a set of all the
             # locations where functions were pinned for this DAG.
-            pinned_locations = []
             for function_name in dag.functions:
                 for location in self.function_locations[function_name]:
                     pinned_locations.append((function_name, location))
