@@ -82,7 +82,7 @@ class DropletUserLibrary(AbstractDropletUserLibrary):
                 if deserialize:
                     result[key] = serializer.load_lattice(kv_pairs[key])
                 else:
-                    result[key] = kv_pairs[key]
+                    result[key] = kv_pairs[key].reveal()
 
         if type(ref) == list:
             return result

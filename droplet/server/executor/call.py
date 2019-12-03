@@ -42,6 +42,8 @@ def exec_function(exec_socket, kvs, user_library, cache, function_cache):
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
 
+    logging.info('Calling %s!' % (call.name))
+
     fargs = [serializer.load(arg) for arg in call.arguments.values]
 
     if call.name in function_cache:
