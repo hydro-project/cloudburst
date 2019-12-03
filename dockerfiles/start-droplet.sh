@@ -29,11 +29,18 @@ gen_yml_list() {
   echo -e "$RESULT"
 }
 
-cd $HYDRO_HOME/droplet
 
 # Download latest version of the code from relevant repository & branch -- if
 # none are specified, we use hydro-project/droplet by default. Install the KVS
 # client from the Anna project.
+cd $HYDRO_HOME/anna
+git remote remove origin
+git remote add origin https://github.com/$ANNA_REPO_ORG/anna
+git fetch-p origin
+git checkout -b brnch origin/$ANNA_REPO_BRANCH
+git submodule update
+
+cd $HYDRO_HOME/droplet
 if [[ -z "$REPO_ORG" ]]; then
   REPO_ORG="hydro-project"
 fi
