@@ -36,11 +36,12 @@ gen_yml_list() {
 cd $HYDRO_HOME/anna
 git remote remove origin
 git remote add origin https://github.com/$ANNA_REPO_ORG/anna
-git fetch-p origin
+git fetch -p origin
 git checkout -b brnch origin/$ANNA_REPO_BRANCH
 git submodule update
 
 cd $HYDRO_HOME/droplet
+git submodule update
 if [[ -z "$REPO_ORG" ]]; then
   REPO_ORG="hydro-project"
 fi

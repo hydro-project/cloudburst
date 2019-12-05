@@ -118,8 +118,7 @@ def _run_function(func, refs, args, user_lib):
         else:
             func_args += (arg,)
 
-    res = func(*func_args)
-    return res
+    return func(*func_args)
 
 
 def _resolve_ref_normal(refs, kvs, cache):
