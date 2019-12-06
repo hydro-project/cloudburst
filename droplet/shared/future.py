@@ -22,7 +22,7 @@ class DropletFuture():
     def get(self):
         obj = self.kvs_client.get(self.obj_id)[self.obj_id]
 
-        while not obj:
+        while obj is None:
             obj = self.kvs_client.get(self.obj_id)[self.obj_id]
 
         return self.serializer.load_lattice(obj)

@@ -320,12 +320,16 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             # Periodically clear any old functions we have cached that we are
             # no longer accepting requests for.
+            del_list = []
             for fname in queue:
                 if len(queue[fname]) == 0 and fname not in status.functions:
-                    del queue[fname]
+                    del_list.append(fname)
                     del function_cache[fname]
                     del runtimes[fname]
                     del exec_counts[fname]
+
+            for fname in del_list:
+                del queue[fname]
 
             # If we are departing and have cleared our queues, let the
             # management server know, and exit the process.
