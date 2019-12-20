@@ -14,7 +14,6 @@
 
 import unittest
 
-from anna.lattices import MapLattice
 import numpy as np
 
 from droplet.shared.proto.droplet_pb2 import (
@@ -95,16 +94,3 @@ class TestSerializer(unittest.TestCase):
         reference = self.serializer.load(serialized)
         self.assertEqual(type(reference), DropletReference)
         self.assertEqual(future.obj_id, reference.key)
-
-    def test_serializer_map_lattice(self):
-        '''
-        Tests that the serializer correctly converts to and from a map lattice.
-        '''
-
-        inpt = {'a': 1, 'b': 2}
-        serialized = self.serializer.dump_lattice(inpt)
-
-        self.assertEqual(type(serialized), LWWPairLattice)
-        output = self.serializer.load_lattice(serialized)
-
-        self.assertEqual(output, inpt)
