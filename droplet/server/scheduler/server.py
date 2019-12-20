@@ -140,9 +140,6 @@ def scheduler(ip, mgmt_ip, route_addr):
 
     start = time.time()
 
-    logging.info('cgwu')
-    print('cgwu')
-
     while True:
         socks = dict(poller.poll(timeout=1000))
 
