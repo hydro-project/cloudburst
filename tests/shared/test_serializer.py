@@ -104,7 +104,7 @@ class TestSerializer(unittest.TestCase):
         inpt = {'a': 1, 'b': 2}
         serialized = self.serializer.dump_lattice(inpt)
 
-        self.assertEqual(type(serialized), MapLattice)
+        self.assertEqual(type(serialized), LWWPairLattice)
         output = self.serializer.load_lattice(serialized)
 
         self.assertEqual(output, inpt)
