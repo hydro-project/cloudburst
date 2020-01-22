@@ -26,4 +26,7 @@ class DropletFunction():
 
     def __call__(self, *args):
         obj_id = self._conn.exec_func(self.name, args)
+        if obj_id is None or len(obj_id) == 0:
+            return None
+
         return DropletFuture(obj_id, self._kvs_client, serializer)
