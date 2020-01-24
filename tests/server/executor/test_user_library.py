@@ -14,8 +14,8 @@
 
 import unittest
 
-from droplet.server.executor.user_library import DropletUserLibrary
-from droplet.shared.serializer import Serializer
+from cloudburst.server.executor.user_library import CloudburstUserLibrary
+from cloudburst.shared.serializer import Serializer
 from tests.mock.kvs_client import MockAnnaClient
 from tests.mock.zmq_utils import MockPusherCache, MockZmqContext
 
@@ -36,7 +36,7 @@ class TestUserLibrary(unittest.TestCase):
         self.ip = '127.0.0.1'
         self.kvs_client = MockAnnaClient()
 
-        self.user_library = DropletUserLibrary(self.context, self.pusher_cache,
+        self.user_library = CloudburstUserLibrary(self.context, self.pusher_cache,
                                                self.ip, 0, self.kvs_client)
 
     def test_kvs_io(self):

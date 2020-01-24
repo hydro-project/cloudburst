@@ -1,5 +1,3 @@
-#!/bin/bash
-
 #  Copyright 2019 U.C. Berkeley RISE Lab
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,5 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-rm -rf cloudburst/shared/proto
-find . | grep __pycache__ | xargs rm -rf
+
+class CloudburstReference():
+    def __init__(self, key, deserialize):
+        self.key = key
+        self.deserialize = deserialize

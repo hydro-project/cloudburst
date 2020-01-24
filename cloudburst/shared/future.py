@@ -1,5 +1,3 @@
-#!/bin/bash
-
 #  Copyright 2019 U.C. Berkeley RISE Lab
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,5 +12,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-rm -rf cloudburst/shared/proto
-find . | grep __pycache__ | xargs rm -rf
+
+class CloudburstFuture():
+    def __init__(self, obj_id, kvs_client, serializer):
+        self.obj_id = obj_id
+        self.kvs_client = kvs_client
+        self.serializer = serializer
+
+    def get(self):
+        obj = self.kvs_client.get(self.obj_id)[self.obj_id]
+
+        while obj is None:
+            obj = self.kvs_client.get(self.obj_id)[self.obj_id]
+
+        return self.serializer.load_lattice(obj)

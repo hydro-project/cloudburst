@@ -18,12 +18,12 @@
 # for PR builds, because we don't want to update the docker image.
 if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
   docker pull hydroproject/base
-  docker pull hydroproject/droplet
+  docker pull hydroproject/cloudburst
 
   cd dockerfiles
-  docker build . -f droplet.dockerfile -t hydroproject/droplet
+  docker build . -f cloudburst.dockerfile -t hydroproject/cloudburst
 
   echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
-  docker push hydroproject/droplet
+  docker push hydroproject/cloudburst
 fi

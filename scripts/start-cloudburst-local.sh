@@ -14,5 +14,26 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-rm -rf cloudburst/shared/proto
-find . | grep __pycache__ | xargs rm -rf
+if [ -z "$1" ]; then
+  echo "Usage: ./$0 build"
+  echo ""
+  echo "You must run this from the project root directory."
+  exit 1
+fi
+
+if [ "$1" = "y" ] || [ "$1" = "yes" ]; then
+  ./scripts/clean.sh
+  ./scripts/build.sh
+fi
+
+# We need this on Ubuntu to make sure that the packages are found when
+# attempting to execute the tests.
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+
+python3 cloudburst/server/scheduler/server.py conf/cloudburst-local.yml &
+SPID=$!
+python3 cloudburst/server/executor/server.py conf/cloudburst-local.yml &
+EPID=$!
+
+echo $SPID > pids
+echo $EPID >> pids
