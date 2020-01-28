@@ -17,24 +17,24 @@ import unittest
 
 from anna.lattices import LWWPairLattice, SingleKeyCausalLattice
 
-from droplet.server.scheduler.create import (
+from cloudburst.server.scheduler.create import (
     create_dag,
     create_function,
     delete_dag
 )
-from droplet.server.scheduler.policy.default_policy import (
-    DefaultDropletSchedulerPolicy
+from cloudburst.server.scheduler.policy.default_policy import (
+    DefaultCloudburstSchedulerPolicy
 )
-from droplet.server.scheduler.utils import get_pin_address, get_unpin_address
-import droplet.server.utils as sutils
-from droplet.shared.proto.droplet_pb2 import (
+from cloudburst.server.scheduler.utils import get_pin_address, get_unpin_address
+import cloudburst.server.utils as sutils
+from cloudburst.shared.proto.cloudburst_pb2 import (
     Dag,
     Function,
     GenericResponse,
-    NORMAL, MULTI,  # Droplet's consistency modes
-    DAG_ALREADY_EXISTS, NO_RESOURCES, NO_SUCH_DAG  # Droplet's error modes
+    NORMAL, MULTI,  # Cloudburst's consistency modes
+    DAG_ALREADY_EXISTS, NO_RESOURCES, NO_SUCH_DAG  # Cloudburst's error modes
 )
-from droplet.shared.serializer import Serializer
+from cloudburst.shared.serializer import Serializer
 from tests.mock import kvs_client, zmq_utils
 from tests.server.utils import create_linear_dag
 
@@ -58,7 +58,7 @@ class TestSchedulerCreate(unittest.TestCase):
         self.kvs_client = kvs_client.MockAnnaClient()
         self.ip = '127.0.0.1'
 
-        self.policy = DefaultDropletSchedulerPolicy(self.pin_socket,
+        self.policy = DefaultCloudburstSchedulerPolicy(self.pin_socket,
                                                     self.pusher_cache,
                                                     self.kvs_client, self.ip,
                                                     random_threshold=0)

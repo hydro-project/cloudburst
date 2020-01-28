@@ -14,9 +14,9 @@
 
 from anna.lattices import LWWPairLattice
 
-from droplet.server.utils import get_func_kvs_name
-from droplet.shared.proto.droplet_pb2 import Dag
-from droplet.shared.serializer import Serializer
+from cloudburst.server.utils import get_func_kvs_name
+from cloudburst.shared.proto.cloudburst_pb2 import Dag
+from cloudburst.shared.serializer import Serializer
 
 serializer = Serializer()
 

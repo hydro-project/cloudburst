@@ -15,30 +15,30 @@
 #  limitations under the License.
 
 if [ -z "$(command -v protoc)" ]; then
-  echo "The protoc tool is required before you can run Droplet locally."
+  echo "The protoc tool is required before you can run Cloudburst locally."
   echo "Please install protoc manually, or use the scripts in" \
     "hydro-project/common to install dependencies before proceeding."
   exit 1
 fi
 
-rm -rf droplet/shared/proto
-mkdir droplet/shared/proto
-touch droplet/shared/proto/__init__.py
-protoc -I=common/proto --python_out=droplet/shared/proto droplet.proto shared.proto
-protoc -I=common/proto --python_out=droplet/shared/proto anna.proto shared.proto causal.proto
-protoc -I=proto --python_out=droplet/shared/proto internal.proto
+rm -rf cloudburst/shared/proto
+mkdir cloudburst/shared/proto
+touch cloudburst/shared/proto/__init__.py
+protoc -I=common/proto --python_out=cloudburst/shared/proto cloudburst.proto shared.proto
+protoc -I=common/proto --python_out=cloudburst/shared/proto anna.proto shared.proto causal.proto
+protoc -I=proto --python_out=cloudburst/shared/proto internal.proto
 
 # NOTE: This is a hack. We have to do this because the protobufs are not
 # packaged properly (in the protobuf definitions). This isn't an issue for C++
 # builds, because all the header files are in one place, but it breaks our
 # Python imports. Consider how to fix this in the future.
 if [[ "$OSTYPE" = "darwin"* ]]; then
-  sed -i '' "s/import shared_pb2/from . import shared_pb2/g" $(find droplet/shared/proto | grep pb2 | grep -v pyc | grep -v internal)
-  sed -i '' "s/import anna_pb2/from . import anna_pb2/g" $(find droplet/shared/proto | grep pb2 | grep -v pyc | grep -v internal)
-  sed -i '' "s/import droplet_pb2/from . import droplet_pb2/g" $(find droplet/shared/proto | grep pb2 | grep -v pyc | grep -v internal)
+  sed -i '' "s/import shared_pb2/from . import shared_pb2/g" $(find cloudburst/shared/proto | grep pb2 | grep -v pyc | grep -v internal)
+  sed -i '' "s/import anna_pb2/from . import anna_pb2/g" $(find cloudburst/shared/proto | grep pb2 | grep -v pyc | grep -v internal)
+  sed -i '' "s/import cloudburst_pb2/from . import cloudburst_pb2/g" $(find cloudburst/shared/proto | grep pb2 | grep -v pyc | grep -v internal)
 else
   # We assume other linux distributions
-  sed -i "s|import shared_pb2|from . import shared_pb2|g" $(find droplet/shared/proto | grep pb2 | grep -v pyc | grep -v internal)
-  sed -i "s|import anna_pb2|from . import anna_pb2|g" $(find droplet/shared/proto | grep pb2 | grep -v pyc | grep -v internal)
-  sed -i "s|import droplet_pb2|from . import droplet_pb2|g" $(find droplet/shared/proto | grep pb2 | grep -v pyc | grep -v internal)
+  sed -i "s|import shared_pb2|from . import shared_pb2|g" $(find cloudburst/shared/proto | grep pb2 | grep -v pyc | grep -v internal)
+  sed -i "s|import anna_pb2|from . import anna_pb2|g" $(find cloudburst/shared/proto | grep pb2 | grep -v pyc | grep -v internal)
+  sed -i "s|import cloudburst_pb2|from . import cloudburst_pb2|g" $(find cloudburst/shared/proto | grep pb2 | grep -v pyc | grep -v internal)
 fi

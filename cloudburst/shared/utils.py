@@ -1,5 +1,3 @@
-#!/bin/bash
-
 #  Copyright 2019 U.C. Berkeley RISE Lab
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,5 +12,23 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-rm -rf cloudburst/shared/proto
-find . | grep __pycache__ | xargs rm -rf
+# The port on which clients can connect to the Cloudburst service.
+CONNECT_PORT = 5000
+
+# The port on which function creation calls are sent to Cloudburst.
+FUNC_CREATE_PORT = 5001
+
+# The port on which function invocation messages are sent.
+FUNC_CALL_PORT = 5002
+
+# The port on which clients retrieve the list of registered functions.
+LIST_PORT = 5003
+
+# The port on which DAG creation requests are sent.
+DAG_CREATE_PORT = 5004
+
+# The port on which DAG invocation requests are made.
+DAG_CALL_PORT = 5005
+
+# The port on which DAG deletion requests are made.
+DAG_DELETE_PORT = 5006

@@ -14,10 +14,10 @@
 
 import unittest
 
-from droplet.server.executor.pin import pin, unpin
-from droplet.server.executor.user_library import DropletUserLibrary
-from droplet.shared.proto.droplet_pb2 import GenericResponse
-from droplet.shared.proto.internal_pb2 import ThreadStatus
+from cloudburst.server.executor.pin import pin, unpin
+from cloudburst.server.executor.user_library import CloudburstUserLibrary
+from cloudburst.shared.proto.cloudburst_pb2 import GenericResponse
+from cloudburst.shared.proto.internal_pb2 import ThreadStatus
 from tests.mock import kvs_client, zmq_utils
 from tests.server.utils import create_function
 
@@ -45,9 +45,9 @@ class TestExecutorPin(unittest.TestCase):
         self.runtimes = {}
         self.exec_counts = {}
 
-        self.user_library = DropletUserLibrary(zmq_utils.MockZmqContext(),
-                                               self.pusher_cache, self.ip, 0,
-                                               self.kvs_client)
+        self.user_library = CloudburstUserLibrary(zmq_utils.MockZmqContext(),
+                                                  self.pusher_cache, self.ip, 0,
+                                                  self.kvs_client)
 
     def test_succesful_pin(self):
         '''

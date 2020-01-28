@@ -17,13 +17,13 @@ import unittest
 from anna.lattices import MapLattice
 import numpy as np
 
-from droplet.shared.proto.droplet_pb2 import (
+from cloudburst.shared.proto.cloudburst_pb2 import (
     Value,
-    DEFAULT, NUMPY  # Droplet's serializer types
+    DEFAULT, NUMPY  # Cloudburst's serializer types
 )
-from droplet.shared.future import DropletFuture
-from droplet.shared.reference import DropletReference
-from droplet.shared.serializer import Serializer
+from cloudburst.shared.future import CloudburstFuture
+from cloudburst.shared.reference import CloudburstReference
+from cloudburst.shared.serializer import Serializer
 from tests.mock.kvs_client import MockAnnaClient
 
 
@@ -81,11 +81,11 @@ class TestSerializer(unittest.TestCase):
     def test_serialize_future(self):
         '''
         Tests that the serializer correctly detects and converts a
-        DropletFuture to a DropletReference.
+        CloudburstFuture to a CloudburstReference.
         '''
 
         kvs_client = MockAnnaClient()
-        future = DropletFuture('id', kvs_client, self.serializer)
+        future = CloudburstFuture('id', kvs_client, self.serializer)
 
         serialized = self.serializer.dump(future, serialize=False)
 
@@ -93,7 +93,7 @@ class TestSerializer(unittest.TestCase):
         self.assertEqual(serialized.type, DEFAULT)
 
         reference = self.serializer.load(serialized)
-        self.assertEqual(type(reference), DropletReference)
+        self.assertEqual(type(reference), CloudburstReference)
         self.assertEqual(future.obj_id, reference.key)
 
     def test_serializer_map_lattice(self):
