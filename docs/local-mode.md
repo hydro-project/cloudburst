@@ -12,4 +12,4 @@ Finally, Cloudburst requires access to the Anna Python client, which is in the A
 
 ## Running Cloudburst
 
-Once all the protobufs have been compiled, `scripts/start-cloudburst-local.sh` will start a local Cloudburst server. You can stop these processes with `scripts/stop-cloudburst-local.sh`. For more information on how to interact with Cloudburst once it is running, see the [function execution docs](docs/function-execution.md).
+Once all the protobufs have been compiled, `scripts/start-cloudburst-local.sh` will start a local Cloudburst server. You can stop these processes with `scripts/stop-cloudburst-local.sh`. For more information on how to interact with Cloudburst once it is running, see the [function execution docs](function-execution.md).
