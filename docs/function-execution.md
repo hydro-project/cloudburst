@@ -8,7 +8,7 @@ First, we'll create two new functions:
 >>> local = True # or False if you are running against a HydroCluster
 >>> elb_address = '127.0.0.1 ' # or the address of the ELB returned by the 
 >>> from cloudburst.client.client import CloudburstConnection
->>> cloudburst = CloudburstConnection(AWS_FUNCTION_ELB, MY_IP)
+>>> cloudburst = CloudburstConnection(AWS_FUNCTION_ELB, MY_IP, local=local)
 >>> incr = lambda _, a: a + 1
 >>> cloud_incr = cloudburst.register(incr, 'incr')
 >>> cloud_incr(1).get()
