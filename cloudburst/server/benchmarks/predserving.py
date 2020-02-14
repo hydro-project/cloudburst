@@ -112,7 +112,7 @@ def run(cloudburst_client, num_requests, sckt):
         oid = str(uuid.uuid4())
         oids.append(oid)
 
-        cloudburst_client.put(oid, arr)
+        cloudburst_client.put_object(oid, arr)
 
     for i in range(num_requests):
         oid = oids[i]
