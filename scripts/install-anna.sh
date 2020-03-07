@@ -17,6 +17,6 @@
 cd $HOME
 git clone --recurse-submodules https://github.com/hydro-project/anna
 cd anna/client/python
-python setup.py install
+python3 setup.py install
 cd $HOME
 rm -rf anna
