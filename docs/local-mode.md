@@ -4,7 +4,7 @@ In order to run Cloudburst, whether in local mode or in [cluster mode](https://g
 
 ## Prerequisites
 
-Cloudburst currently only supports Python3. To install Python dependencies, simply run `pip install -r requiments.txt` from the Cloudburst source directory.
+Cloudburst currently only supports Python3. To install Python dependencies, simply run `pip install -r requirements.txt` from the Cloudburst source directory.
 
 Before running Cloudburst, we need to compile its Protobufs locally to generate the Python dependency files. `scripts/build.sh` automatically does this for you and installs them in the correct location, but it requires having the `protoc` tool installed. If you need to remove the locally compiled protobufs, you can run `bash scripts/clean.sh`.
 
