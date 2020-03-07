@@ -11,10 +11,10 @@ Cloudburst is a low-latency, stateful serverless programming framework built on 
 You can install Cloudburst's dependencies with `pip` and use the bash scripts included in this repository to run the system locally. You can find the Cloudburst client in `cloudburst/client/client.py`. Full documentation on starting a cluster in local mode can be found [here](docs/local-mode.md); documentation for the Cloudburst client can be found [here](docs/function-execution.md). An example interaction is modeled below.
 
 ```bash
-$ pip install -r requirements.txt
-$ ./scripts/start-cloudburst-local.sh
+$ pip3 install -r requirements.txt
+$ ./scripts/start-cloudburst-local.sh n n
 ...
-$ ./scripts/stop-cloudburst-local.sh
+$ ./scripts/stop-cloudburst-local.sh n
 ```
 
 The `CloudburstConnection` is the main client interface; when running in local mode, all interaction between the client and server happens on `localhost`. Users can register functions and execute them. The executions return `CloudburstFuture`s, which can be retrieved asynchronously via the `get` method. Users can also register DAGs (directed, acylic graphs) of functions, where results from one function will be passed to downstream functions. 
