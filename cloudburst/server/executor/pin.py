@@ -17,15 +17,17 @@ import sys
 
 import cloudburst.server.utils as sutils
 from cloudburst.server.executor import utils
+from cloudburst.shared.proto.internal_pb2 import PinFunction
 
 
 def pin(pin_socket, pusher_cache, kvs, status, function_cache, runtimes,
         exec_counts, user_library):
-    msg = pin_socket.recv_string()
-    splits = msg.split(':')
+    pin_msg = PinFunction()
+    serialized = pin_socket.recv()
+    pin_msg.ParseFromString(serialized)
 
-    resp_ip, name = splits[0], splits[1]
-    sckt = pusher_cache.get(sutils.get_pin_accept_port(resp_ip))
+    sckt = pusher_cache.get(sutils.get_pin_accept_port(pin_msg.response_address))
+    name = pin_msg.name
 
     # We currently only allow one pinned function per container.
     if (len(function_cache) > 0 and name not in function_cache) or not status.running:
@@ -35,7 +37,7 @@ def pin(pin_socket, pusher_cache, kvs, status, function_cache, runtimes,
 
     sckt.send(sutils.ok_resp)
 
-    func = utils.retrieve_function(name, kvs, user_library)
+    func = utils.retrieve_function(pin_msg.name, kvs, user_library)
 
     # The function must exist -- because otherwise the DAG couldn't be
     # registered -- so we keep trying to retrieve it.

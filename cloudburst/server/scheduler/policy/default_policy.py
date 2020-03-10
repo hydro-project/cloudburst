@@ -19,6 +19,7 @@ import time
 import zmq
 
 from cloudburst.shared.proto.cloudburst_pb2 import GenericResponse
+from cloudburst.shared.proto.internal_pb2 import PinFunction
 from cloudburst.shared.proto.shared_pb2 import StringSet
 from cloudburst.server.scheduler.policy.base_policy import (
     BaseCloudburstSchedulerPolicy
@@ -157,7 +158,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         self.unique_executors.add(max_ip)
         return max_ip
 
-    def pin_function(self, dag_name, function_name):
+    def pin_function(self, dag_name, function_ref):
         # If there are no functions left to choose from, then we return None,
         # indicating that we ran out of resources to use.
         if len(self.unpinned_executors) == 0:
@@ -170,14 +171,20 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         # system's metadata.
         candidates = set(self.unpinned_executors)
 
+        # Construct a PinFunction message to be sent to executors.
+        pin_msg = PinFunction()
+        pin_msg.name = function_ref.name
+        pin_msg.response_address = self.ip
+
+        serialized = pin_msg.SerializeToString()
+
         while True:
             # Pick a random executor from the set of candidates and attempt to
             # pin this function there.
             node, tid = sys_random.sample(candidates, 1)[0]
 
             sckt = self.pusher_cache.get(get_pin_address(node, tid))
-            msg = self.ip + ':' + function_name
-            sckt.send_string(msg)
+            sckt.send_string(serialized)
 
             response = GenericResponse()
             try:
@@ -196,13 +203,13 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             if response.success:
                 # The pin operation succeeded, so we return the node and thread
                 # ID to the caller.
-                self.pending_dags[dag_name].append((function_name, (node,
-                                                                    tid)))
+                self.pending_dags[dag_name].append((function_ref.name, (node,
+                                                                        tid)))
                 return True
             else:
                 # The pin operation was rejected, remove node and try again.
                 logging.error('Node %s:%d rejected pin for %s. Retrying.'
-                              % (node, tid, function_name))
+                              % (node, tid, function_ref.name))
 
                 continue
 
@@ -226,9 +233,9 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         else:
             # If the DAG was not pinned, we construct a set of all the
             # locations where functions were pinned for this DAG.
-            for function_name in dag.functions:
-                for location in self.function_locations[function_name]:
-                    pinned_locations.append((function_name, location))
+            for function_ref in dag.functions:
+                for location in self.function_locations[function_ref.name]:
+                    pinned_locations.append((function_ref.name, location))
 
         # For each location, we fire-and-forget an unpin message.
         for function_name, location in pinned_locations:

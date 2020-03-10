@@ -30,7 +30,8 @@ from cloudburst.shared.proto.cloudburst_pb2 import (
     DagTrigger,
     FunctionCall,
     NORMAL, MULTI,  # Cloudburst's consistency modes,
-    EXECUTION_ERROR, FUNC_NOT_FOUND  # Cloudburst's error types
+    EXECUTION_ERROR, FUNC_NOT_FOUND,  # Cloudburst's error types
+    MULTIEXEC # Cloudburst's execution types
 )
 from cloudburst.shared.reference import CloudburstReference
 from cloudburst.shared.serializer import Serializer
@@ -41,8 +42,6 @@ serializer = Serializer()
 def exec_function(exec_socket, kvs, user_library, cache, function_cache):
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
-
-    logging.info('Calling %s!' % (call.name))
 
     fargs = [serializer.load(arg) for arg in call.arguments.values]
 
@@ -212,13 +211,14 @@ def _resolve_ref_causal(refs, kvs, schedule, key_version_locations,
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule,
                       user_library, dag_runtimes, cache):
     if schedule.consistency == NORMAL:
-        finished = _exec_dag_function_normal(pusher_cache, kvs,
-                                             triggers, function, schedule,
-                                             user_library, cache)
+        finished, success = _exec_dag_function_normal(pusher_cache, kvs,
+                                                      triggers, function,
+                                                      schedule, user_library,
+                                                      cache)
     else:
-        finished = _exec_dag_function_causal(pusher_cache, kvs,
-                                             triggers, function, schedule,
-                                             user_library)
+        finished, success = _exec_dag_function_causal(pusher_cache, kvs,
+                                                      triggers, function,
+                                                      schedule, user_library)
 
     # If finished is true, that means that this executor finished the DAG
     # request. We will report the end-to-end latency for this DAG if so.
@@ -229,6 +229,8 @@ def exec_dag_function(pusher_cache, kvs, triggers, function, schedule,
 
         runtime = time.time() - schedule.start_time
         dag_runtimes[schedule.dag.name].append(runtime)
+
+    return success
 
 
 def _construct_trigger(sid, fname, result):
@@ -256,6 +258,16 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
     fargs = [serializer.load(arg) for arg in fargs]
     result = _exec_func_normal(kvs, function, fargs, user_lib, cache)
 
+    this_ref = None
+    for ref in schedule.dag.functions:
+        if ref.name == fname:
+            this_ref = ref # There must be a match.
+
+    success = True
+    if this_ref.type == MULTIEXEC:
+        if serializer.dump(result) in this_ref.invalid_results:
+            return False, False
+
     is_sink = True
     new_trigger = _construct_trigger(schedule.id, fname, result)
     for conn in schedule.dag.connections:
@@ -282,7 +294,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
                          (schedule.dag.name, trigger.id, output_key))
             kvs.put(output_key, lattice)
 
-    return is_sink
+    return is_sink, success
 
 
 def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule,
@@ -321,6 +333,16 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule,
 
     result = _exec_func_causal(kvs, function, fargs, user_lib, schedule,
                                key_version_locations, dependencies)
+
+    this_ref = None
+    for ref in schedule.dag.functions:
+        if ref.name == fname:
+            this_ref = ref # There must be a match.
+
+    success = True
+    if this_ref.type == MULTIEXEC:
+        if serializer.dump(result) in this_ref.invalid_results:
+            return False, False
 
     # Create a new trigger with the schedule ID and results of this execution.
     new_trigger = _construct_trigger(schedule.id, fname, result)
@@ -384,7 +406,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule,
             sckt = pusher_cache.get(gc_address)
             sckt.send_string(schedule.client_id)
 
-    return is_sink
+    return is_sink, success
 
 
 def _compute_children_read_set(schedule):

@@ -34,6 +34,7 @@ from cloudburst.shared.proto.cloudburst_pb2 import (
     NORMAL, MULTI,  # Cloudburst's consistency modes
     DAG_ALREADY_EXISTS, NO_RESOURCES, NO_SUCH_DAG  # Cloudburst's error modes
 )
+from cloudburst.shared.proto.internal_pb2 import PinFunction
 from cloudburst.shared.serializer import Serializer
 from tests.mock import kvs_client, zmq_utils
 from tests.server.utils import create_linear_dag
@@ -182,11 +183,11 @@ class TestSchedulerCreate(unittest.TestCase):
         messages = self.pusher_cache.socket.outbox
         function_set = {source, sink}
         for message in messages:
-            self.assertTrue(':' in message)
-            ip, fname = message.split(':')
-            self.assertEqual(ip, self.ip)
-            self.assertTrue(fname in function_set)
-            function_set.discard(fname)
+            pin_msg = PinFunction()
+            pin_msg.ParseFromString(message)
+            self.assertEqual(pin_msg.response_address, self.ip)
+            self.assertTrue(pin_msg.name in function_set)
+            function_set.discard(pin_msg.name)
 
         self.assertEqual(len(function_set), 0)
 
@@ -285,10 +286,10 @@ class TestSchedulerCreate(unittest.TestCase):
         messages = self.pusher_cache.socket.outbox
 
         # Checks for the pin message.
-        self.assertTrue(':' in messages[0])
-        ip, fname = messages[0].split(':')
-        self.assertEqual(ip, self.ip)
-        self.assertEqual(source, fname)
+        pin_msg = PinFunction()
+        pin_msg.ParseFromString(messages[0])
+        self.assertEqual(pin_msg.response_address, self.ip)
+        self.assertEqual(pin_msg.name, source)
 
         # Checks for the unpin message.
         self.assertEqual(messages[1], source)

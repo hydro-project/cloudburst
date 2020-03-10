@@ -32,7 +32,8 @@ from cloudburst.shared.proto.cloudburst_pb2 import (
     FunctionCall,
     GenericResponse,
     NORMAL, MULTI,  # Cloudburst's supported consistency modes
-    FUNC_NOT_FOUND, EXECUTION_ERROR  # Cloudburst's error types
+    EXECUTION_ERROR, FUNC_NOT_FOUND,  # Cloudburst's error types
+    MULTIEXEC # Cloudburst's execution types
 )
 from cloudburst.shared.reference import CloudburstReference
 from cloudburst.shared.serializer import Serializer
@@ -588,6 +589,61 @@ class TestExecutorCall(unittest.TestCase):
 
         val = serializer.load(trigger.arguments.values[0])
         self.assertEqual(val, incr('', arg_value))
+
+    def test_dag_exec_multi_input_false(self):
+        def incr(_, x): x + 1
+        iname = 'incr'
+
+        def square(_, x): return x * x
+        sname = 'square'
+        arg = 2
+
+        # Create a DAG and a trigger for the first function in the DAG.
+        dag = create_linear_dag([incr, square], [iname, sname],
+                                self.kvs_client, 'dag')
+        ref = dag.functions[1] if dag.functions[1].name == sname else \
+            dag.functions[0]
+        ref.type = MULTIEXEC
+        ref.invalid_results.append(serializer.dump(4))
+
+        schedule, triggers = self._create_fn_schedule(dag, arg, sname,
+                                                      [iname, sname])
+
+        result = exec_dag_function(self.pusher_cache, self.kvs_client,
+                                   triggers, square, schedule,
+                                   self.user_library, {}, {})
+
+        self.assertFalse(result)
+        data = self.kvs_client.get(schedule.id)
+        self.assertEqual(data[schedule.id], None)
+
+    def test_dag_exec_multi_input_true(self):
+        def incr(_, x): x + 1
+        iname = 'incr'
+
+        def square(_, x): return x * x
+        sname = 'square'
+        arg = 2
+
+        # Create a DAG and a trigger for the first function in the DAG.
+        dag = create_linear_dag([incr, square], [iname, sname],
+                                self.kvs_client, 'dag')
+        ref = dag.functions[1] if dag.functions[1].name == sname else \
+            dag.functions[0]
+        ref.type = MULTIEXEC
+        ref.invalid_results.append(serializer.dump(5))
+
+        schedule, triggers = self._create_fn_schedule(dag, arg, sname,
+                                                      [iname, sname])
+
+        result = exec_dag_function(self.pusher_cache, self.kvs_client,
+                                   triggers, square, schedule,
+                                   self.user_library, {}, {})
+
+        self.assertTrue(result)
+        data = self.kvs_client.get(schedule.id)
+        self.assertEqual(serializer.load_lattice(data[schedule.id]),
+                         square(None, arg))
 
     ''' HELPER FUNCTIONS '''
 

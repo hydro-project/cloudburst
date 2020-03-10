@@ -103,7 +103,7 @@ def find_dag_source(dag):
     for conn in dag.connections:
         sinks.add(conn.sink)
 
-    funcs = set(dag.functions)
+    funcs = set(map(lambda fref: fref.name, dag.functions))
     for sink in sinks:
         funcs.remove(sink)
 

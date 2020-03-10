@@ -101,3 +101,8 @@ message SchedulerStatus {
   repeated FunctionLocation function_locations = 2;
 }
 
+message PinFunction {
+  string name = 1;
+
+  string response_address = 2;
+}

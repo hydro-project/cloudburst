@@ -265,7 +265,8 @@ class TestSchedulerCall(unittest.TestCase):
         # Construct a simple, two-function DAG.
         dag = Dag()
         dag.name = 'dag'
-        dag.functions.extend([source, sink])
+        dag.functions.extend([Dag.FunctionReference(name=source),
+                              Dag.FunctionReference(name=sink)])
         link = dag.connections.add()
         link.source = source
         link.sink = sink

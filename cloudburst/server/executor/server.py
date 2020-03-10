@@ -125,6 +125,10 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # A map with KVS keys and their corresponding deserialized payloads.
     cache = {}
 
+    # A map which tracks the most recent DAGs for which we have finished our
+    # work.
+    finished_executions = {}
+
     # Internal metadata to track thread utilization.
     report_start = time.time()
     event_occupancy = {'pin': 0.0,
@@ -193,19 +197,22 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             if (trkey in received_triggers and (len(received_triggers[trkey])
                                                 == len(schedule.triggers))):
 
-                exec_dag_function(pusher_cache, client,
-                                  received_triggers[trkey],
-                                  function_cache[fname], schedule,
-                                  user_library, dag_runtimes, cache)
+                success = exec_dag_function(pusher_cache, client,
+                                            received_triggers[trkey],
+                                            function_cache[fname], schedule,
+                                            user_library, dag_runtimes, cache)
                 user_library.close()
 
-                del received_triggers[trkey]
-                del queue[fname][schedule.id]
+                if success:
+                    del received_triggers[trkey]
+                    del queue[fname][schedule.id]
 
-                fend = time.time()
-                fstart = receive_times[(schedule.id, fname)]
-                runtimes[fname].append(fend - fstart)
-                exec_counts[fname] += 1
+                    fend = time.time()
+                    fstart = receive_times[(schedule.id, fname)]
+                    runtimes[fname].append(fend - fstart)
+                    exec_counts[fname] += 1
+
+                    finished_executions[schedule.id] = time.time()
 
             elapsed = time.time() - work_start
             event_occupancy['dag_queue'] += elapsed
@@ -215,6 +222,11 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             work_start = time.time()
             trigger = DagTrigger()
             trigger.ParseFromString(dag_exec_socket.recv())
+
+            # We have received a repeated trigger for a function that has
+            # already finished executing.
+            if trigger.id in finished_executions:
+                continue
 
             fname = trigger.target_function
             logging.info('Received a trigger for schedule %s, function %s.' %
@@ -330,6 +342,10 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             for fname in del_list:
                 del queue[fname]
+
+            del_list = []
+            for tid in finished_executions:
+
 
             # If we are departing and have cleared our queues, let the
             # management server know, and exit the process.

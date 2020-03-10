@@ -25,7 +25,8 @@ from cloudburst.shared.proto.cloudburst_pb2 import (
     Function,
     FunctionCall,
     GenericResponse,
-    NORMAL  # Cloudburst consistency modes
+    NORMAL,  # Cloudburst consistency modes
+    MULTIEXEC # Cloudburst's execution types
 )
 from cloudburst.shared.proto.shared_pb2 import StringSet
 from cloudburst.shared.serializer import Serializer
@@ -164,7 +165,21 @@ class CloudburstConnection():
 
         dag = Dag()
         dag.name = name
-        dag.functions.extend(functions)
+        for function in functions:
+            ref = dag.functions.add()
+
+            if type(function) == tuple:
+                fname = function[0]
+                invalids = function[1]
+                ref.type = MULTIEXEC
+            else:
+                fname = function
+                invalids = []
+
+            ref.name = fname
+            for invalid in invalids:
+                ref.invalid_results.append(serializer.dump(invalid))
+
         for pair in connections:
             conn = dag.connections.add()
             conn.source = pair[0]
