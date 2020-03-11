@@ -63,7 +63,7 @@ logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
 
-def scheduler(ip, mgmt_ip, route_addr, metric_addr):
+def scheduler(ip, mgmt_ip, route_addr):
 
     # If the management IP is not set, we are running in local mode.
     local = (mgmt_ip is None)
@@ -255,8 +255,6 @@ def scheduler(ip, mgmt_ip, route_addr, metric_addr):
             num_unique_executors = policy.get_unique_executors()
             key = scheduler_id + ':' + str(time.time())
             data = {'key': key, 'count': num_unique_executors}
-            # requests.post(metric_addr, data=json.dumps(data),
-            #               headers={'Content-Type': 'application/json'})
 
             status = SchedulerStatus()
             for name in dags.keys():
@@ -316,7 +314,4 @@ if __name__ == '__main__':
     conf = sutils.load_conf(conf_file)
     sched_conf = conf['scheduler']
 
-    metric_address = 'http://' + sched_conf['metric_address'] + ':3000/publish'
-
-    scheduler(conf['ip'], conf['mgmt_ip'], sched_conf['routing_address'],
-              metric_address)
+    scheduler(conf['ip'], conf['mgmt_ip'], sched_conf['routing_address'])
