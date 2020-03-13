@@ -140,7 +140,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
     # Start the policy engine.
     policy = DefaultCloudburstSchedulerPolicy(pin_accept_socket, pusher_cache,
-                                           kvs, ip)
+                                           kvs, ip, local=local)
     policy.update()
 
     start = time.time()
