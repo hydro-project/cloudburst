@@ -28,37 +28,37 @@ from tests.server.scheduler.policy import test_default_policy
 from tests.shared import test_serializer
 
 
-def droplet_test_suite():
-    droplet_tests = []
+def cloudburst_test_suite():
+    cloudburst_tests = []
     loader = unittest.TestLoader()
 
-    # Load Droplet Executor tests
-    droplet_tests.append(
+    # Load Cloudburst Executor tests
+    cloudburst_tests.append(
         loader.loadTestsFromTestCase(test_executor_call.TestExecutorCall))
-    droplet_tests.append(
+    cloudburst_tests.append(
         loader.loadTestsFromTestCase(test_pin.TestExecutorPin))
-    droplet_tests.append(
+    cloudburst_tests.append(
         loader.loadTestsFromTestCase(test_user_library.TestUserLibrary))
 
-    # Load Droplet Scheduler tests
-    droplet_tests.append(
+    # Load Cloudburst Scheduler tests
+    cloudburst_tests.append(
         loader.loadTestsFromTestCase(test_scheduler_call.TestSchedulerCall))
-    droplet_tests.append(
+    cloudburst_tests.append(
         loader.loadTestsFromTestCase(test_create.TestSchedulerCreate))
-    droplet_tests.append(
+    cloudburst_tests.append(
         loader.loadTestsFromTestCase(
             test_default_policy.TestDefaultSchedulerPolicy))
 
     # Load miscellaneous tests
-    droplet_tests.append(loader.loadTestsFromTestCase(
+    cloudburst_tests.append(loader.loadTestsFromTestCase(
         test_serializer.TestSerializer))
 
-    return unittest.TestSuite(droplet_tests)
+    return unittest.TestSuite(cloudburst_tests)
 
 
 if __name__ == '__main__':
     runner = unittest.TextTestRunner()
-    result = runner.run(droplet_test_suite())
+    result = runner.run(cloudburst_test_suite())
 
     if not result.wasSuccessful():
         sys.exit(1)

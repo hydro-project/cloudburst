@@ -1,5 +1,3 @@
-#!/bin/bash
-
 #  Copyright 2019 U.C. Berkeley RISE Lab
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +12,21 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-cd $HOME
-git clone --recurse-submodules https://github.com/hydro-project/anna
-cd anna/client/python
-python3 setup.py install
-cd $HOME
-rm -rf anna
+from cloudburst.shared.future import CloudburstFuture
+from cloudburst.shared.serializer import Serializer
+
+serializer = Serializer()
+
+
+class CloudburstFunction():
+    def __init__(self, name, conn, kvs_client):
+        self.name = name
+        self._conn = conn
+        self._kvs_client = kvs_client
+
+    def __call__(self, *args):
+        obj_id = self._conn.exec_func(self.name, args)
+        if obj_id is None or len(obj_id) == 0:
+            return None
+
+        return CloudburstFuture(obj_id, self._kvs_client, serializer)

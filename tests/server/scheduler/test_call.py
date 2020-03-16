@@ -14,25 +14,25 @@
 
 import unittest
 
-from droplet.server.scheduler.call import call_function, call_dag
-from droplet.server.scheduler.policy.default_policy import (
-    DefaultDropletSchedulerPolicy
+from cloudburst.server.scheduler.call import call_function, call_dag
+from cloudburst.server.scheduler.policy.default_policy import (
+    DefaultCloudburstSchedulerPolicy
 )
-from droplet.server.scheduler import utils
-from droplet.server import utils as sutils
-from droplet.shared.proto.droplet_pb2 import (
+from cloudburst.server.scheduler import utils
+from cloudburst.server import utils as sutils
+from cloudburst.shared.proto.cloudburst_pb2 import (
     Dag,
     DagCall,
     DagSchedule,
     DagTrigger,
     FunctionCall,
     GenericResponse,
-    NO_RESOURCES,  # Droplet's error types
-    NORMAL  # Droplet's consistency modes
+    NO_RESOURCES,  # Cloudburst's error types
+    NORMAL  # Cloudburst's consistency modes
 )
-from droplet.shared.proto.internal_pb2 import ThreadStatus
-from droplet.shared.reference import DropletReference
-from droplet.shared.serializer import Serializer
+from cloudburst.shared.proto.internal_pb2 import ThreadStatus
+from cloudburst.shared.reference import CloudburstReference
+from cloudburst.shared.serializer import Serializer
 from tests.mock import kvs_client, zmq_utils
 
 serializer = Serializer()
@@ -55,7 +55,7 @@ class TestSchedulerCall(unittest.TestCase):
         self.kvs_client = kvs_client.MockAnnaClient()
         self.ip = '127.0.0.1'
 
-        self.policy = DefaultDropletSchedulerPolicy(self.pin_socket,
+        self.policy = DefaultCloudburstSchedulerPolicy(self.pin_socket,
                                                     self.pusher_cache,
                                                     self.kvs_client, self.ip,
                                                     random_threshold=0)
@@ -129,7 +129,7 @@ class TestSchedulerCall(unittest.TestCase):
         call.name = 'function'
         call.request_id = 12
         val = call.arguments.values.add()
-        serializer.dump(DropletReference(ref_name, True), val)
+        serializer.dump(CloudburstReference(ref_name, True), val)
         self.socket.inbox.append(call.SerializeToString(0))
 
         # Execute the scheduling policy.

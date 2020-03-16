@@ -1,5 +1,3 @@
-#!/bin/bash
-
 #  Copyright 2019 U.C. Berkeley RISE Lab
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-cd $HOME
-git clone --recurse-submodules https://github.com/hydro-project/anna
-cd anna/client/python
-python3 setup.py install
-cd $HOME
-rm -rf anna
+
+class CloudburstReference():
+    def __init__(self, key, deserialize):
+        self.key = key
+        self.deserialize = deserialize

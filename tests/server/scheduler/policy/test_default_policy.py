@@ -18,14 +18,14 @@ import unittest
 
 from anna.lattices import LWWPairLattice
 
-from droplet.server.scheduler.policy.default_policy import (
-    DefaultDropletSchedulerPolicy
+from cloudburst.server.scheduler.policy.default_policy import (
+    DefaultCloudburstSchedulerPolicy
 )
-from droplet.server.scheduler.utils import get_cache_ip_key
-import droplet.server.utils as sutils
-from droplet.shared.proto.internal_pb2 import ThreadStatus, SchedulerStatus
-from droplet.shared.proto.shared_pb2 import StringSet
-from droplet.shared.serializer import Serializer
+from cloudburst.server.scheduler.utils import get_cache_ip_key
+import cloudburst.server.utils as sutils
+from cloudburst.shared.proto.internal_pb2 import ThreadStatus, SchedulerStatus
+from cloudburst.shared.proto.shared_pb2 import StringSet
+from cloudburst.shared.serializer import Serializer
 from tests.mock import kvs_client, zmq_utils
 
 serializer = Serializer()
@@ -48,10 +48,10 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         self.kvs_client = kvs_client.MockAnnaClient()
         self.ip = '127.0.0.1'
 
-        self.policy = DefaultDropletSchedulerPolicy(self.pin_socket,
-                                                    self.pusher_cache,
-                                                    self.kvs_client, self.ip,
-                                                    random_threshold=0)
+        self.policy = DefaultCloudburstSchedulerPolicy(self.pin_socket,
+                                                       self.pusher_cache,
+                                                       self.kvs_client, self.ip,
+                                                       random_threshold=0)
 
     def tearDown(self):
         # Clear all policy metadata.

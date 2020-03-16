@@ -14,5 +14,5 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-rm -rf droplet/shared/proto
+rm -rf cloudburst/shared/proto
 find . | grep __pycache__ | xargs rm -rf

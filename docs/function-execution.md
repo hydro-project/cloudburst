@@ -1,39 +1,39 @@
-# Executing Functions in Droplet
+# Executing Functions in Cloudburst
 
-You will either need to run Droplet in [local mode](local-mode.md) or run a Hydro cluster. You can find instructions for running a Hydro cluster in the `hydro-project/cluster` repo, [here](https://github.com/hydro-project/cluster/blob/master/docs/getting-started-aws.md). Once you have either of these modes set up, you are ready to run functions in Droplet.
+You will either need to run Cloudburst in [local mode](local-mode.md) or run a Hydro cluster. You can find instructions for running a Hydro cluster in the `hydro-project/cluster` repo, [here](https://github.com/hydro-project/cluster/blob/master/docs/getting-started-aws.md). Once you have either of these modes set up, you are ready to run functions in Cloudburst.
 
 First, we'll create two new functions:
 
 ```python3
 >>> local = True # or False if you are running against a HydroCluster
 >>> elb_address = '127.0.0.1 ' # or the address of the ELB returned by the 
->>> from droplet.client.client import DropletConnection
->>> droplet = DropletConnection(AWS_FUNCTION_ELB, MY_IP)
+>>> from cloudburst.client.client import CloudburstConnection
+>>> cloudburst = CloudburstConnection(AWS_FUNCTION_ELB, MY_IP, local=local)
 >>> incr = lambda _, a: a + 1
->>> cloud_incr = droplet.register(incr, 'incr')
+>>> cloud_incr = cloudburst.register(incr, 'incr')
 >>> cloud_incr(1).get()
 2
 >>> square = lambda _, a: a * a
->>> cloud_square = droplet.register(square, 'square')
+>>> cloud_square = cloudburst.register(square, 'square')
 >>> cloud_square(2).get()
 4
 ```
 
-Note that every function takes a first argument that is the [Droplet User Library](#DropletUserLibrary). We ignore that variable in these functions because we do not need it; the API is fully documented below.
+Note that every function takes a first argument that is the [Cloudburst User Library](#CloudburstUserLibrary). We ignore that variable in these functions because we do not need it; the API is fully documented below.
 
 Now we'll chain those functions together and execute them at once:
 
 ```python3
 # Create a DAG with two functions, incr and square, where incr comes before square.
->>> droplet.register_dag('test_dag', ['incr', 'square'], [('incr', 'square')])
+>>> cloudburst.register_dag('test_dag', ['incr', 'square'], [('incr', 'square')])
 True # returns False if registration fails, e.g., if one of the referenced functions does not exist
->>> droplet.call_dag('test_dag', { 'incr': 1 }).get()
+>>> cloudburst.call_dag('test_dag', { 'incr': 1 }).get()
 4
 ```
 
 * All calls to functions and DAGs are by default asynchronous. Results are stored in the key-value store, and object IDs are returned. DAG calls can optionally specify synchronous calls by setting the `direct_response` argument to `True`.
 * DAGs can have arbitrary branches and connections and have multiple sources, but there must be only one sink function in the DAG. The result of this sink function is what is returned to the caller.
-* For those familiar with the Anna KVS, all use of lattices is abstracted away from the Droplet user. The serialization and deserialization is done automatically by the runtime, and only Python values are passed into and out of all API functions.
+* For those familiar with the Anna KVS, all use of lattices is abstracted away from the Cloudburst user. The serialization and deserialization is done automatically by the runtime, and only Python values are passed into and out of all API functions.
 
 ## Registering and Executing Classes
 
@@ -58,7 +58,7 @@ cloud.register((Expensive, init_arg), 'expensive_class')
 
 <sup>1</sup> Note that the benefits of using a class will not work with one-shot function execution, as the class will be reinitialized for each request.
 
-## Droplet User Library
+## Cloudburst User Library
 
 | API Name  | Functionality | 
 |-----------|---------------|

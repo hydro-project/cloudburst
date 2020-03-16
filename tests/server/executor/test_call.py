@@ -23,19 +23,19 @@ from anna.lattices import (
     VectorClock
 )
 
-from droplet.server.executor.call import exec_function, exec_dag_function
-from droplet.server.executor.user_library import DropletUserLibrary
-from droplet.server.utils import DEFAULT_VC
-from droplet.shared.proto.droplet_pb2 import (
+from cloudburst.server.executor.call import exec_function, exec_dag_function
+from cloudburst.server.executor.user_library import CloudburstUserLibrary
+from cloudburst.server.utils import DEFAULT_VC
+from cloudburst.shared.proto.cloudburst_pb2 import (
     DagSchedule,
     DagTrigger,
     FunctionCall,
     GenericResponse,
-    NORMAL, MULTI,  # Droplet's supported consistency modes
-    FUNC_NOT_FOUND, EXECUTION_ERROR  # Droplet's error types
+    NORMAL, MULTI,  # Cloudburst's supported consistency modes
+    FUNC_NOT_FOUND, EXECUTION_ERROR  # Cloudburst's error types
 )
-from droplet.shared.reference import DropletReference
-from droplet.shared.serializer import Serializer
+from cloudburst.shared.reference import CloudburstReference
+from cloudburst.shared.serializer import Serializer
 from tests.mock import kvs_client, zmq_utils
 from tests.server.utils import (
     create_function,
@@ -61,7 +61,7 @@ class TestExecutorCall(unittest.TestCase):
         self.kvs_client = kvs_client.MockAnnaClient()
         self.socket = zmq_utils.MockZmqSocket()
         self.pusher_cache = zmq_utils.MockPusherCache()
-        self.user_library = DropletUserLibrary(zmq_utils.MockZmqContext(),
+        self.user_library = CloudburstUserLibrary(zmq_utils.MockZmqContext(),
                                                self.pusher_cache, self.ip, 0,
                                                self.kvs_client)
 
@@ -214,7 +214,7 @@ class TestExecutorCall(unittest.TestCase):
 
         # Create and serialize the function call.
         call = self._create_function_call(
-            fname, [DropletReference(arg_name, True)], NORMAL)
+            fname, [CloudburstReference(arg_name, True)], NORMAL)
         self.socket.inbox.append(call.SerializeToString())
 
         # Execute the function call.
@@ -251,7 +251,7 @@ class TestExecutorCall(unittest.TestCase):
 
         # Create and serialize the function call.
         call = self._create_function_call(
-            fname, [DropletReference(arg_name, True)], MULTI)
+            fname, [CloudburstReference(arg_name, True)], MULTI)
         self.socket.inbox.append(call.SerializeToString())
 
         # Execute the function call.
@@ -288,7 +288,7 @@ class TestExecutorCall(unittest.TestCase):
         # Put the function into the KVS and create a function call.
         create_function(func, self.kvs_client, fname)
         call = self._create_function_call(
-            fname, [DropletReference(arg_name, True)], NORMAL)
+            fname, [CloudburstReference(arg_name, True)], NORMAL)
         self.socket.inbox.append(call.SerializeToString())
 
         # Execute the function call.
@@ -321,7 +321,7 @@ class TestExecutorCall(unittest.TestCase):
         # Put the function into the KVS and create a function call.
         create_function(func, self.kvs_client, fname)
         call = self._create_function_call(
-            fname, [DropletReference(arg_name, True)], NORMAL)
+            fname, [CloudburstReference(arg_name, True)], NORMAL)
         self.socket.inbox.append(call.SerializeToString())
 
         # Execute the function call.
@@ -347,10 +347,10 @@ class TestExecutorCall(unittest.TestCase):
         '''
         # Create the function and put it into the KVS.
         class Test:
-            def __init__(self, droplet, num):
+            def __init__(self, cloudburst, num):
                 self.num = num
 
-            def run(self, droplet, inp):
+            def run(self, cloudburst, inp):
                 return inp + self.num
 
         fname = 'class'
@@ -552,7 +552,7 @@ class TestExecutorCall(unittest.TestCase):
         dag = create_linear_dag([incr, square], [iname, sname],
                                 self.kvs_client, 'dag', MultiKeyCausalLattice)
         schedule, triggers = self._create_fn_schedule(
-            dag, DropletReference(arg_name, True), iname, [iname, sname],
+            dag, CloudburstReference(arg_name, True), iname, [iname, sname],
             MULTI)
 
         exec_dag_function(self.pusher_cache, self.kvs_client, triggers, incr,

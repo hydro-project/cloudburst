@@ -36,15 +36,15 @@ class InstallWrapper(install):
 
     def cleanup(self):
         os.system('./scripts/clean.sh')
-        os.system('rm -rf Droplet.egg-info')
+        os.system('rm -rf Cloudburst.egg-info')
 
 
 setup(
-        name='Droplet',
+        name='Cloudburst',
         version='0.1.0',
         packages=find_packages(),
         license='Apache v2',
-        long_description='The Droplet Client and Server',
+        long_description='The Cloudburst Client and Server',
         install_requires=['zmq', 'protobuf', 'anna'],
         cmdclass={'install': InstallWrapper}
 )

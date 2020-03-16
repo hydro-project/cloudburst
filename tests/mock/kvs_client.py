@@ -14,9 +14,9 @@
 
 from anna.base_client import BaseAnnaClient
 
-from droplet.server.utils import DEFAULT_VC
-from droplet.shared.proto.shared_pb2 import KeyVersion
-from droplet.shared.proto.droplet_pb2 import NORMAL
+from cloudburst.server.utils import DEFAULT_VC
+from cloudburst.shared.proto.shared_pb2 import KeyVersion
+from cloudburst.shared.proto.cloudburst_pb2 import NORMAL
 
 
 class MockAnnaClient(BaseAnnaClient):
