@@ -112,8 +112,6 @@ class Serializer():
         if not typ:
             if isinstance(value, set):
                 return self.dump_lattice(value, SetLattice)
-            elif isinstance(value, list):
-                return self.dump_lattice(value, OrderedSetLattice)
             else:
                 return self.dump_lattice(value, LWWPairLattice)
 
