@@ -22,8 +22,9 @@ from cloudburst.shared.proto.internal_pb2 import PinFunction
 
 def pin(pin_socket, pusher_cache, kvs, status, function_cache, runtimes,
         exec_counts, user_library, local):
-    msg = pin_socket.recv_string()
-    splits = msg.split(':')
+    serialized = pin_socket.recv()
+    pin_msg = PinFunction()
+    pin_msg.ParseFromString(serialized)
 
     sckt = pusher_cache.get(sutils.get_pin_accept_port(pin_msg.response_address))
     name = pin_msg.name

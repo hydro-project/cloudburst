@@ -187,7 +187,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             node, tid = sys_random.sample(candidates, 1)[0]
 
             sckt = self.pusher_cache.get(get_pin_address(node, tid))
-            sckt.send_string(serialized)
+            sckt.send(serialized)
 
             response = GenericResponse()
             try:

@@ -251,8 +251,7 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].values)
 
-    for trname in schedule.triggers:
-        trigger = triggers[trname]
+    for trigger in triggers:
         fargs += list(trigger.arguments.values)
 
     fargs = [serializer.load(arg) for arg in fargs]

@@ -27,7 +27,11 @@ from cloudburst.server.executor.call import exec_function, exec_dag_function
 from cloudburst.server.executor.pin import pin, unpin
 from cloudburst.server.executor.user_library import CloudburstUserLibrary
 from cloudburst.shared.anna_ipc_client import AnnaIpcClient
-from cloudburst.shared.proto.cloudburst_pb2 import DagSchedule, DagTrigger
+from cloudburst.shared.proto.cloudburst_pb2 import (
+    DagSchedule,
+    DagTrigger,
+    MULTIEXEC # Cloudburst's execution types
+)
 from cloudburst.shared.proto.internal_pb2 import (
     ExecutorStatistics,
     ThreadStatus,
@@ -196,17 +200,27 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             # In case we receive the trigger before we receive the schedule, we
             # can trigger from this operation as well.
             trkey = (schedule.id, fname)
-            if (trkey in received_triggers and (len(received_triggers[trkey])
-                                                == len(schedule.triggers))):
+            fref = None
+
+            # Check to see what type of execution this function is.
+            for ref in schedule.dag.functions:
+                if ref.name == fname:
+                    fref = ref
+
+            if (trkey in received_triggers and
+                    ((len(received_triggers[trkey]) == len(schedule.triggers)) \
+                    or (fref.type == MULTIEXEC))):
+
+                triggers = received_triggers[trkey]
 
                 success = exec_dag_function(pusher_cache, client,
-                                            received_triggers[trkey],
-                                            function_cache[fname], schedule,
-                                            user_library, dag_runtimes, cache)
+                                            triggers, function_cache[fname],
+                                            schedule, user_library,
+                                            dag_runtimes, cache)
                 user_library.close()
 
+                del received_triggers[trkey]
                 if success:
-                    del received_triggers[trkey]
                     del queue[fname][schedule.id]
 
                     fend = time.time()
@@ -214,7 +228,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     runtimes[fname].append(fend - fstart)
                     exec_counts[fname] += 1
 
-                    finished_executions[schedule.id] = time.time()
+                    finished_executions[(schedule.id, fname)] = time.time()
 
             elapsed = time.time() - work_start
             event_occupancy['dag_queue'] += elapsed
@@ -244,20 +258,38 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             received_triggers[key][trigger.source] = trigger
             if fname in queue and trigger.id in queue[fname]:
                 schedule = queue[fname][trigger.id]
-                if len(received_triggers[key]) == len(schedule.triggers):
-                    exec_dag_function(pusher_cache, client,
-                                      received_triggers[key],
-                                      function_cache[fname], schedule,
-                                      user_library, dag_runtimes, cache)
+                fref = None
+
+                # Check to see what type of execution this function is.
+                for ref in schedule.dag.functions:
+                    if ref.name == fname:
+                        fref = ref
+
+                if (len(received_triggers[key]) == len(schedule.triggers)) or \
+                        fref.type == MULTIEXEC:
+
+                    if fref.type == MULTIEXEC:
+                        triggers = [trigger]
+                    else:
+                        triggers = list(received_triggers[key].values())
+
+                    success = exec_dag_function(pusher_cache, client,
+                                                triggers,
+                                                function_cache[fname],
+                                                schedule, user_library,
+                                                dag_runtimes, cache)
                     user_library.close()
-
                     del received_triggers[key]
-                    del queue[fname][trigger.id]
 
-                    fend = time.time()
-                    fstart = receive_times[(trigger.id, fname)]
-                    runtimes[fname].append(fend - fstart)
-                    exec_counts[fname] += 1
+                    if success:
+                        del queue[fname][trigger.id]
+
+                        fend = time.time()
+                        fstart = receive_times[(trigger.id, fname)]
+                        runtimes[fname].append(fend - fstart)
+                        exec_counts[fname] += 1
+
+                        finished_executions[(schedule.id, fname)] = time.time()
 
             elapsed = time.time() - work_start
             event_occupancy['dag_exec'] += elapsed
@@ -347,7 +379,11 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             del_list = []
             for tid in finished_executions:
+                if (time.time() - finished_executions[tid]) > 10:
+                    del_list.append(tid)
 
+            for tid in del_list:
+                del finished_executions[tid]
 
             # If we are departing and have cleared our queues, let the
             # management server know, and exit the process.

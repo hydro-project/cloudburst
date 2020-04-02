@@ -157,11 +157,13 @@ class CloudburstConnection():
 
         flist = self._get_func_list()
         for fname in functions:
+            if isinstance(fname, tuple):
+                fname = fname[0]
+
             if fname not in flist:
-                logging.info(
-                    'Function %s not registered. Please register before \
-                    including it in a DAG.' % (fname))
-                return False, None
+                raise RuntimeError(
+                    f'Function {fname} not registered. Please register before ' +
+                    'including it in a DAG.')
 
         dag = Dag()
         dag.name = name
