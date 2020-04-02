@@ -286,8 +286,16 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
         # If the executor thread is overutilized, we add it to the backoff set
         # and ignore it for a period of time.
-        if status.utilization > 0.70:
-            self.backoff[key] = time.time()
+        if status.utilization > 0.70 and not self.local:
+            not_lone_executor = []
+            for function_name in status.functions:
+                if len(self.function_locations[function_name]) > 1:
+                    not_lone_executor.append(True)
+                else:
+                    not_lone_executor.append(False)
+
+            if all(not_lone_executor):
+                self.backoff[key] = time.time()
 
     def update(self):
         # Periodically clean up the running counts map to drop any times older

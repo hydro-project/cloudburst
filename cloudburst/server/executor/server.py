@@ -19,6 +19,7 @@ import time
 
 from anna.client import AnnaTcpClient
 from anna.zmq_util import SocketCache
+import torch
 import zmq
 
 from cloudburst.server import utils as sutils
