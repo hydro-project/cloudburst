@@ -82,6 +82,15 @@ def get_dag_predecessors(dag, fname):
 
     return result
 
+def get_dag_successors(dag, fname):
+    result = []
+
+    for connection in dag.connections:
+        if connection.source == fname:
+            result.append(connection.sink)
+
+    return result
+
 
 def get_user_msg_inbox_addr(ip, tid):
     return 'tcp://' + ip + ':' + str(int(tid) + RECV_INBOX_PORT)

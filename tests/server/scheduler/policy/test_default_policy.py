@@ -18,8 +18,8 @@ import unittest
 
 from anna.lattices import LWWPairLattice
 
-from cloudburst.server.scheduler.policy.default_policy import (
-    DefaultCloudburstSchedulerPolicy
+from cloudburst.server.scheduler.policy.heft_policy import (
+    HeftCloudburstSchedulerPolicy
 )
 from cloudburst.server.scheduler.utils import get_cache_ip_key
 import cloudburst.server.utils as sutils
@@ -48,7 +48,7 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         self.kvs_client = kvs_client.MockAnnaClient()
         self.ip = '127.0.0.1'
 
-        self.policy = DefaultCloudburstSchedulerPolicy(self.pin_socket,
+        self.policy = HeftCloudburstSchedulerPolicy(self.pin_socket,
                                                        self.pusher_cache,
                                                        self.kvs_client, self.ip,
                                                        random_threshold=0)

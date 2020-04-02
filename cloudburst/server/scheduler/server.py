@@ -29,8 +29,8 @@ from cloudburst.server.scheduler.create import (
     create_function,
     delete_dag
 )
-from cloudburst.server.scheduler.policy.default_policy import (
-    DefaultCloudburstSchedulerPolicy
+from cloudburst.server.scheduler.policy.heft_policy import (
+    HeftCloudburstSchedulerPolicy
 )
 import cloudburst.server.scheduler.utils as sched_utils
 import cloudburst.server.utils as sutils
@@ -139,7 +139,7 @@ def scheduler(ip, mgmt_ip, route_addr):
     poller.register(sched_update_socket, zmq.POLLIN)
 
     # Start the policy engine.
-    policy = DefaultCloudburstSchedulerPolicy(pin_accept_socket, pusher_cache,
+    policy = HeftCloudburstSchedulerPolicy(pin_accept_socket, pusher_cache,
                                            kvs, ip, local=local)
     policy.update()
 
