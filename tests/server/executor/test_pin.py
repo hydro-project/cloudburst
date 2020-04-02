@@ -68,7 +68,7 @@ class TestExecutorPin(unittest.TestCase):
         # Execute the pin operation.
         pin(self.socket, self.pusher_cache, self.kvs_client, self.status,
             self.pinned_functions, self.runtimes, self.exec_counts,
-            self.user_library)
+            self.user_library, False)
 
         # Check that the correct messages were sent and the correct metadata
         # created.
@@ -108,7 +108,7 @@ class TestExecutorPin(unittest.TestCase):
         # Execute the pin operation.
         pin(self.socket, self.pusher_cache, self.kvs_client, self.status,
             self.pinned_functions, self.runtimes, self.exec_counts,
-            self.user_library)
+            self.user_library, False)
 
         # Check that the correct messages were sent and the correct metadata
         # created.

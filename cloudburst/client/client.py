@@ -219,8 +219,11 @@ class CloudburstConnection():
             dc.client_id = client_id
 
         for fname in arg_map:
+            fname_args = arg_map[fname]
+            if type(fname_args) != list:
+                fname_args = [fname_args]
             args = [serializer.dump(arg, serialize=False) for arg in
-                    arg_map[fname]]
+                    fname_args]
             al = dc.function_args[fname]
             al.values.extend(args)
 

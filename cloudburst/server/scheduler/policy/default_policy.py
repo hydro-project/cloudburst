@@ -36,7 +36,7 @@ sys_random = random.SystemRandom()
 class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
     def __init__(self, pin_accept_socket, pusher_cache, kvs_client, ip,
-                 random_threshold=0.20):
+                 random_threshold=0.20, local=False):
         # This scheduler's IP address.
         self.ip = ip
 
@@ -79,6 +79,9 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         self.random_threshold = random_threshold
 
         self.unique_executors = set()
+
+        # Indicates if we are running in local mode
+        self.local = local
 
     def get_unique_executors(self):
         count = len(self.unique_executors)
@@ -197,8 +200,10 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             # Do not use this executor either way: If it rejected, it has
             # something else pinned, and if it accepted, it has pinned what we
             # just asked it to pin.
-            self.unpinned_executors.discard((node, tid))
-            candidates.discard((node, tid))
+            # In local model allow executors to have multiple functions pinned
+            if not self.local:
+                self.unpinned_executors.discard((node, tid))
+                candidates.discard((node, tid))
 
             if response.success:
                 # The pin operation succeeded, so we return the node and thread

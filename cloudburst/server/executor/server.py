@@ -80,8 +80,10 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # local mode, so we use a regular AnnaTcpClient rather than an IPC client.
     if mgmt_ip:
         client = AnnaIpcClient(thread_id, context)
+        local = False
     else:
         client = AnnaTcpClient('127.0.0.1', '127.0.0.1', local=True, offset=1)
+        local = True
 
     user_library = CloudburstUserLibrary(context, pusher_cache, ip, thread_id,
                                       client)
@@ -144,7 +146,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             work_start = time.time()
             pin(pin_socket, pusher_cache, client, status, function_cache,
-                runtimes, exec_counts, user_library)
+                runtimes, exec_counts, user_library, local)
             utils.push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
