@@ -83,13 +83,17 @@ def call_dag(call, pusher_cache, dags, policy):
     if call.client_id:
         schedule.client_id = call.client_id
 
+    # Maps functions to CloudBurstReferences
+    functions = {}
     for fname in dag.functions:
         args = call.function_args[fname].values
-
         refs = list(filter(lambda arg: type(arg) == CloudburstReference,
                            map(lambda arg: serializer.load(arg), args)))
+        functions[fname] = refs
 
-        result = policy.pick_executor(refs, fname)
+    results = policy.pick_executors(functions, dag)
+
+    for fname, result in results.items():
         if result is None:
             response = GenericResponse()
             response.success = False
@@ -100,8 +104,29 @@ def call_dag(call, pusher_cache, dags, policy):
         schedule.locations[fname] = ip + ':' + str(tid)
 
         # copy over arguments into the dag schedule
+        args = call.function_args[fname].values
         arg_list = schedule.arguments[fname]
         arg_list.values.extend(args)
+
+    # for fname in dag.functions:
+    #     args = call.function_args[fname].values
+    #
+    #     refs = list(filter(lambda arg: type(arg) == CloudburstReference,
+    #                        map(lambda arg: serializer.load(arg), args)))
+    #
+    #     result = policy.pick_executor(refs, fname)
+    #     if result is None:
+    #         response = GenericResponse()
+    #         response.success = False
+    #         response.error = NO_RESOURCES
+    #         return response
+    #
+    #     ip, tid = result
+    #     schedule.locations[fname] = ip + ':' + str(tid)
+    #
+    #     # copy over arguments into the dag schedule
+    #     arg_list = schedule.arguments[fname]
+    #     arg_list.values.extend(args)
 
     for fname in dag.functions:
         loc = schedule.locations[fname].split(':')
