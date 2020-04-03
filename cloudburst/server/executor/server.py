@@ -212,7 +212,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     ((len(received_triggers[trkey]) == len(schedule.triggers)) \
                     or (fref.type == MULTIEXEC))):
 
-                triggers = received_triggers[trkey]
+                triggers = list(received_triggers[key].values())
 
                 success = exec_dag_function(pusher_cache, client,
                                             triggers, function_cache[fname],
