@@ -141,8 +141,7 @@ class CloudburstConnection():
         if resp.success:
             return CloudburstFunction(name, self, self.kvs_client)
         else:
-            print('Unexpected error while registering function: \n\t%s.'
-                  % (resp))
+            raise RuntimeError(f'Unexpected error while registering function: {resp}.')
 
     def register_dag(self, name, functions, connections):
         '''
