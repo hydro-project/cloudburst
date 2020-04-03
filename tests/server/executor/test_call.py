@@ -425,7 +425,7 @@ class TestExecutorCall(unittest.TestCase):
         # We know that there is only one trigger. We populate dependencies
         # explicitly in this trigger message to make sure that they are
         # reflected in the final result.
-        kv = triggers['BEGIN'].dependencies.add()
+        kv = triggers[0].dependencies.add()
         kv.key = 'dependency'
         DEFAULT_VC.serialize(kv.vector_clock)
 
@@ -686,4 +686,4 @@ class TestExecutorCall(unittest.TestCase):
         trigger.target_function = schedule.target_function
         trigger.source = 'BEGIN'
 
-        return schedule, {'BEGIN': trigger}
+        return schedule, [trigger] # {'BEGIN': trigger}

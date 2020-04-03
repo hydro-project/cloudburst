@@ -121,12 +121,16 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         status.ip = self.ip
         status.tid = 1
         status.functions.append(function_name)
-        status.utilization = 0.90
-
-        key = (status.ip, status.tid)
+        status.utilization = 0.10
 
         # Process the newly created status.
         self.policy.process_status(status)
+
+        status.tid = 2
+        status.utilization = 0.90
+        self.policy.process_status(status)
+
+        key = (status.ip, status.tid)
 
         self.assertTrue(key not in self.policy.unpinned_executors)
         self.assertTrue(key in self.policy.function_locations[function_name])

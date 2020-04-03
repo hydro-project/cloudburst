@@ -304,8 +304,7 @@ def _exec_dag_function_causal(pusher_cache, kvs, triggers, function, schedule,
     key_version_locations = {}
     dependencies = {}
 
-    for trname in schedule.triggers:
-        trigger = triggers[trname]
+    for trigger in triggers:
         fargs += list(trigger.arguments.values)
 
         # Combine the locations of upstream cached key versions from all
