@@ -83,13 +83,13 @@ def call_dag(call, pusher_cache, dags, policy):
     if call.client_id:
         schedule.client_id = call.client_id
 
-    for fname in dag.functions:
-        args = call.function_args[fname].values
+    for fref in dag.functions:
+        args = call.function_args[fref.name].values
 
         refs = list(filter(lambda arg: type(arg) == CloudburstReference,
                            map(lambda arg: serializer.load(arg), args)))
 
-        result = policy.pick_executor(refs, fname)
+        result = policy.pick_executor(refs, fref.name)
         if result is None:
             response = GenericResponse()
             response.success = False
@@ -97,18 +97,18 @@ def call_dag(call, pusher_cache, dags, policy):
             return response
 
         ip, tid = result
-        schedule.locations[fname] = ip + ':' + str(tid)
+        schedule.locations[fref.name] = ip + ':' + str(tid)
 
         # copy over arguments into the dag schedule
-        arg_list = schedule.arguments[fname]
+        arg_list = schedule.arguments[fref.name]
         arg_list.values.extend(args)
 
-    for fname in dag.functions:
-        loc = schedule.locations[fname].split(':')
+    for fref in dag.functions:
+        loc = schedule.locations[fref.name].split(':')
         ip = utils.get_queue_address(loc[0], loc[1])
-        schedule.target_function = fname
+        schedule.target_function = fref.name
 
-        triggers = sutils.get_dag_predecessors(dag, fname)
+        triggers = sutils.get_dag_predecessors(dag, fref.name)
         if len(triggers) == 0:
             triggers.append('BEGIN')
 

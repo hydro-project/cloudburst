@@ -101,3 +101,12 @@ message SchedulerStatus {
   repeated FunctionLocation function_locations = 2;
 }
 
+// A message sent by the scheduler to tell an executor thread to pin a function
+// locally.
+message PinFunction {
+  // The name of the function to pin.
+  string name = 1;
+
+  // The address to which the executor should accept or reject the pin request.
+  string response_address = 2;
+}

@@ -76,9 +76,9 @@ def create_dag(dag_create_socket, pusher_cache, kvs, dags, policy,
     payload = LWWPairLattice(sutils.generate_timestamp(0), serialized)
     kvs.put(dag.name, payload)
 
-    for fname in dag.functions:
+    for fref in dag.functions:
         for _ in range(num_replicas):
-            success = policy.pin_function(dag.name, fname)
+            success = policy.pin_function(dag.name, fref)
 
             # The policy engine will only return False if it ran out of
             # resources on which to attempt to pin this function.
@@ -95,9 +95,9 @@ def create_dag(dag_create_socket, pusher_cache, kvs, dags, policy,
 
     # Only create this metadata after all functions have been successfully
     # created.
-    for fname in dag.functions:
-        if fname not in call_frequency:
-            call_frequency[fname] = 0
+    for fref in dag.functions:
+        if fref.name not in call_frequency:
+            call_frequency[fref.name] = 0
 
     policy.commit_dag(dag.name)
     dags[dag.name] = (dag, utils.find_dag_source(dag))
@@ -120,8 +120,8 @@ def delete_dag(dag_delete_socket, dags, policy, call_frequency):
 
     # Remove all performance metadata for this DAG and send a success response
     # to the user.
-    for fname in dag.functions:
-        del call_frequency[fname]
+    for fref in dag.functions:
+        del call_frequency[fref.name]
 
     del dags[dag_name]
     dag_delete_socket.send(sutils.ok_resp)

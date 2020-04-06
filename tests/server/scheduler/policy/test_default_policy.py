@@ -23,6 +23,7 @@ from cloudburst.server.scheduler.policy.default_policy import (
 )
 from cloudburst.server.scheduler.utils import get_cache_ip_key
 import cloudburst.server.utils as sutils
+from cloudburst.shared.proto.cloudburst_pb2 import Dag
 from cloudburst.shared.proto.internal_pb2 import ThreadStatus, SchedulerStatus
 from cloudburst.shared.proto.shared_pb2 import StringSet
 from cloudburst.shared.serializer import Serializer
@@ -98,7 +99,8 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         self.pin_socket.inbox.append(sutils.ok_resp)
         self.pin_socket.inbox.append(sutils.error.SerializeToString())
 
-        success = self.policy.pin_function('dag', 'function')
+        success = self.policy.pin_function(
+            'dag', Dag.FunctionReference(name='function'))
         self.assertTrue(success)
 
         # Ensure that both remaining executors have been removed from unpinned
@@ -119,12 +121,16 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         status.ip = self.ip
         status.tid = 1
         status.functions.append(function_name)
-        status.utilization = 0.90
-
-        key = (status.ip, status.tid)
+        status.utilization = 0.10
 
         # Process the newly created status.
         self.policy.process_status(status)
+
+        status.tid = 2
+        status.utilization = 0.90
+        self.policy.process_status(status)
+
+        key = (status.ip, status.tid)
 
         self.assertTrue(key not in self.policy.unpinned_executors)
         self.assertTrue(key in self.policy.function_locations[function_name])
