@@ -37,7 +37,8 @@ def create_linear_dag(functions, fnames, kvs_client, dname,
         function = functions[index]
         create_function(function, kvs_client, fname, lattice_type)
 
-        dag.functions.append(fname)
+        ref = dag.functions.add()
+        ref.name = fname
 
         if prev:
             link = dag.connections.add()

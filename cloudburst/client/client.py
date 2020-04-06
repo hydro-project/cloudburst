@@ -25,7 +25,8 @@ from cloudburst.shared.proto.cloudburst_pb2 import (
     Function,
     FunctionCall,
     GenericResponse,
-    NORMAL  # Cloudburst consistency modes
+    NORMAL,  # Cloudburst consistency modes
+    MULTIEXEC # Cloudburst's execution types
 )
 from cloudburst.shared.proto.shared_pb2 import StringSet
 from cloudburst.shared.serializer import Serializer
@@ -155,15 +156,31 @@ class CloudburstConnection():
 
         flist = self._get_func_list()
         for fname in functions:
+            if isinstance(fname, tuple):
+                fname = fname[0]
+
             if fname not in flist:
-                logging.info(
-                    'Function %s not registered. Please register before \
-                    including it in a DAG.' % (fname))
-                return False, None
+                raise RuntimeError(
+                    f'Function {fname} not registered. Please register before ' +
+                    'including it in a DAG.')
 
         dag = Dag()
         dag.name = name
-        dag.functions.extend(functions)
+        for function in functions:
+            ref = dag.functions.add()
+
+            if type(function) == tuple:
+                fname = function[0]
+                invalids = function[1]
+                ref.type = MULTIEXEC
+            else:
+                fname = function
+                invalids = []
+
+            ref.name = fname
+            for invalid in invalids:
+                ref.invalid_results.append(serializer.dump(invalid))
+
         for pair in connections:
             conn = dag.connections.add()
             conn.source = pair[0]

@@ -24,6 +24,9 @@ class CloudburstFunction():
         self._conn = conn
         self._kvs_client = kvs_client
 
+    def get_name(self):
+        return self.name
+
     def __call__(self, *args):
         obj_id = self._conn.exec_func(self.name, args)
         if obj_id is None or len(obj_id) == 0:
