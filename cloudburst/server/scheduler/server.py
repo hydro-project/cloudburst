@@ -189,7 +189,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             dag = dags[name]
             for fname in dag[0].functions:
-                call_frequency[fname] += 1
+                call_frequency[fname.name] += 1
 
             response = call_dag(call, pusher_cache, dags, policy)
             dag_call_socket.send(response.SerializeToString())

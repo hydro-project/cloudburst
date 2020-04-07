@@ -17,7 +17,7 @@ import unittest
 from cloudburst.server.executor.pin import pin, unpin
 from cloudburst.server.executor.user_library import CloudburstUserLibrary
 from cloudburst.shared.proto.cloudburst_pb2 import GenericResponse
-from cloudburst.shared.proto.internal_pb2 import ThreadStatus
+from cloudburst.shared.proto.internal_pb2 import PinFunction, ThreadStatus
 from tests.mock import kvs_client, zmq_utils
 from tests.server.utils import create_function
 
@@ -62,8 +62,8 @@ class TestExecutorPin(unittest.TestCase):
         create_function(func, self.kvs_client, fname)
 
         # Create a pin message and put it into the socket.
-        msg = self.ip + ':' + fname
-        self.socket.inbox.append(msg)
+        msg = PinFunction(name=fname, response_address=self.ip)
+        self.socket.inbox.append(msg.SerializeToString())
 
         # Execute the pin operation.
         pin(self.socket, self.pusher_cache, self.kvs_client, self.status,
@@ -96,8 +96,8 @@ class TestExecutorPin(unittest.TestCase):
         create_function(func, self.kvs_client, fname)
 
         # Create a pin message and put it into the socket.
-        msg = self.ip + ':' + fname
-        self.socket.inbox.append(msg)
+        msg = PinFunction(name=fname, response_address=self.ip)
+        self.socket.inbox.append(msg.SerializeToString())
 
         # Add an already pinned_function, so that we reject the request.
         self.pinned_functions['square'] = lambda _, x: x * x
