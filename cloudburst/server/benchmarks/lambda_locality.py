@@ -28,7 +28,7 @@ sys_random = random.SystemRandom()
 
 def run(name, kvs, num_requests, sckt):
     name = 'locality-' + name
-    oids = cp.loads(kvs.get(name).reveal())
+    oids = cp.loads(kvs.get(name)[name].reveal())
 
     lambd = boto3.client('lambda', 'us-east-1')
 
