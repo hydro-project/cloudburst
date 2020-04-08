@@ -38,6 +38,7 @@ git remote remove origin
 git remote add origin https://github.com/$ANNA_REPO_ORG/anna
 git fetch -p origin
 git checkout -b brnch origin/$ANNA_REPO_BRANCH
+git submodule sync
 git submodule update
 
 cd $HYDRO_HOME/cloudburst
@@ -54,6 +55,8 @@ git remote remove origin
 git remote add origin https://github.com/$REPO_ORG/cloudburst
 git fetch -p origin
 git checkout -b brnch origin/$REPO_BRANCH
+git submodule sync
+git submodule update
 
 # Compile protobufs and run other installation procedures before starting.
 ./scripts/build.sh
