@@ -28,6 +28,8 @@ USER root
 WORKDIR $HYDRO_HOME/cloudburst
 RUN git remote remove origin && git remote add origin https://github.com/$repo_org/cloudburst
 RUN git fetch -p origin && git checkout -b $build_branch origin/$source_branch
+RUN rm -rf /usr/lib/python3/dist-packages/yaml
+RUN rm -rf /usr/lib/python3/dist-packages/PyYAML-*
 RUN pip3 install -r requirements.txt
 WORKDIR $HYDRO_HOME
 RUN rm -rf anna

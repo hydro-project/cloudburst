@@ -58,7 +58,11 @@ class CloudburstConnection():
 
         self.service_addr = 'tcp://' + func_addr + ':%d'
         self.context = zmq.Context(1)
+
         kvs_addr = self._connect()
+        while not kvs_addr:
+            logging.info('Connection timed out, retrying')
+            kvs_addr = self._connect()
 
         # Picks a random offset of 10, mostly to alleviate port conflicts when
         # running in local mode.
@@ -236,21 +240,23 @@ class CloudburstConnection():
         r = GenericResponse()
         r.ParseFromString(self.dag_call_sock.recv())
 
-        if direct_response:
-            try:
-                result = self.response_sock.recv()
-                return serializer.load(result)
-            except zmq.ZMQError as e:
-                if e.errno == zmq.EAGAIN:
-                    return None
-                else:
-                    raise e
-        else:
-            if r.success:
+        if r.success:
+            if direct_response:
+                try:
+                    result = self.response_sock.recv()
+                    return serializer.load(result)
+                except zmq.ZMQError as e:
+                    if e.errno == zmq.EAGAIN:
+                        logging.error('Request timed out')
+                        return None
+                    else:
+                        raise e
+            else:
                 return CloudburstFuture(r.response_id, self.kvs_client,
                                      serializer)
-            else:
-                return None
+        else:
+            logging.error('Scheduling request failed')
+            return None
 
     def delete_dag(self, dname):
         '''
@@ -299,11 +305,22 @@ class CloudburstConnection():
         return r.response_id
 
     def _connect(self):
+        logging.info('Connecting to scheduler service')
         sckt = self.context.socket(zmq.REQ)
+        sckt.setsockopt(zmq.RCVTIMEO, 1000)
         sckt.connect(self.service_addr % CONNECT_PORT)
         sckt.send_string('')
 
-        return sckt.recv_string()
+        try:
+            result = sckt.recv_string()
+            logging.info('Connected to scheduler service')
+            return result
+        except zmq.ZMQError as e:
+            if e.errno == zmq.EAGAIN:
+                logging.error('Connecting timed out')
+                return None
+            else:
+                raise e
 
     def _get_func_list(self, prefix=None):
         msg = prefix if prefix else ''
