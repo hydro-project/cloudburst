@@ -90,7 +90,7 @@ def call_dag(call, pusher_cache, dags, policy):
                            map(lambda arg: serializer.load(arg), args)))
 
         colocated = []
-        if fref.fname in dag.colocated:
+        if fref.name in dag.colocated:
             colocated = list(dag.colocated)
 
         result = policy.pick_executor(refs, fref.name)
