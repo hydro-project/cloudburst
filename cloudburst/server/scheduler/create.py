@@ -79,6 +79,7 @@ def create_dag(dag_create_socket, pusher_cache, kvs, dags, policy,
     for fref in dag.functions:
         for _ in range(num_replicas):
             colocated = []
+
             if fref.name in dag.colocated:
                 colocated = list(dag.colocated)
 

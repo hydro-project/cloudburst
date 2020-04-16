@@ -190,16 +190,33 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             candidates = set(self.unpinned_executors)
         else:
             candidates = set()
-            already_pinned = self.pending_dags[dag_name]
+
+            already_pinned = set()
+            for fn, thread in self.pending_dags[dag_name]:
+                if fn in colocated:
+                    already_pinned.add((fn, thread))
             candidate_nodes = set()
 
-            for fn, thread in already_pinned:
-                if fn in colocated:
+            if len(already_pinned) > 0:
+                for fn, thread in already_pinned:
                     candidate_nodes.add(thread[0]) # The node's IP
 
-            for node, tid in self.unpinned_executors:
-                if node in candidate_nodes:
-                    candidates.add((node, tid))
+                for node, tid in self.unpinned_executors:
+                    if node in candidate_nodes:
+                        candidates.add((node, tid))
+            else:
+                # If this is the first colocate to be pinned, try to assign to
+                # an empty node.
+                nodes = {}
+                for node, tid in self.unpinned_executors:
+                    if node not in nodes:
+                        nodes[node] = 0
+                    nodes[node] += 1
+
+                for node in nodes:
+                    if nodes[node] == 3:
+                        for i in range(3):
+                            candidates.add((node, i))
 
         if len(candidates) == 0: # There no valid executors to colocate on.
             return self.pin_function(dag_name, function_ref, [])
@@ -330,7 +347,8 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                     not_lone_executor.append(False)
 
             if all(not_lone_executor):
-                self.backoff[key] = time.time()
+                pass
+                # self.backoff[key] = time.time()
 
     def update(self):
         # Periodically clean up the running counts map to drop any times older
