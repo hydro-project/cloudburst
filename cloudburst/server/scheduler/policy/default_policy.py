@@ -37,6 +37,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
     def __init__(self, pin_accept_socket, pusher_cache, kvs_client, ip,
                  random_threshold=0.20, local=False):
+        self.log = open('log_policy.txt', 'w')
         # This scheduler's IP address.
         self.ip = ip
 
@@ -176,6 +177,9 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         return max_ip
 
     def pin_function(self, dag_name, function_ref, colocated):
+        self.log.write('function is ' + function_ref.name + '\n')
+        self.log.write('colcoated is ' + str(colocated) + '\n')
+        self.log.flush()
         # If there are no functions left to choose from, then we return None,
         # indicating that we ran out of resources to use.
         if len(self.unpinned_executors) == 0:
@@ -189,17 +193,41 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         if len(colocated) == 0:
             candidates = set(self.unpinned_executors)
         else:
+            self.log.write('Attempting to colocate ' + function_ref.name + '\n')
+            self.log.flush()
             candidates = set()
-            already_pinned = self.pending_dags[dag_name]
+
+            already_pinned = set()
+            for fn, thread in self.pending_dags[dag_name]:
+                if fn in colocated:
+                    already_pinned.add((fn, thread))
+            self.log.write('already pinned is ' + str(already_pinned) + '\n')
+            self.log.flush()
             candidate_nodes = set()
 
-            for fn, thread in already_pinned:
-                if fn in colocated:
+            if len(already_pinned) > 0:
+                for fn, thread in already_pinned:
                     candidate_nodes.add(thread[0]) # The node's IP
 
-            for node, tid in self.unpinned_executors:
-                if node in candidate_nodes:
-                    candidates.add((node, tid))
+                for node, tid in self.unpinned_executors:
+                    if node in candidate_nodes:
+                        candidates.add((node, tid))
+            else:
+                # If this is the first colocate to be pinned, try to assign to
+                # an empty node.
+                nodes = {}
+                for node, tid in self.unpinned_executors:
+                    if node not in nodes:
+                        nodes[node] = 0
+                    nodes[node] += 1
+
+                for node in nodes:
+                    if nodes[node] == 3:
+                        for i in range(3):
+                            candidates.add((node, i))
+
+                self.log.write('Candidate for pin are ' + str(candidates) + '\n')
+                self.log.flush()
 
         if len(candidates) == 0: # There no valid executors to colocate on.
             return self.pin_function(dag_name, function_ref, [])
