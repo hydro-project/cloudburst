@@ -17,8 +17,12 @@ import logging
 import numpy as np
 
 
-def print_latency_stats(data, ident, log=False):
+def print_latency_stats(data, ident, log=False, epoch=0):
     npdata = np.array(data)
+    tput = 0
+
+    if epoch > 0:
+        tput = len(data) / epoch
 
     mean = np.mean(npdata)
     median = np.percentile(npdata, 50)
@@ -33,12 +37,14 @@ def print_latency_stats(data, ident, log=False):
     mn = np.min(npdata)
 
     output = ('%s LATENCY:\n\tsample size: %d\n' +
+              '\tTHROUGHPUT: %.4f\n'
               '\tmean: %.6f, median: %.6f\n' +
               '\tmin/max: (%.6f, %.6f)\n' +
               '\tp25/p75: (%.6f, %.6f)\n' +
               '\tp5/p95: (%.6f, %.6f)\n' +
-              '\tp1/p99: (%.6f, %.6f)') % (ident, len(data), mean, median, mn,
-                                           mx, p25, p75, p05, p95, p01, p99)
+              '\tp1/p99: (%.6f, %.6f)') % (ident, len(data), tput, mean,
+                                           median, mn, mx, p25, p75, p05, p95,
+                                           p01, p99)
 
     if log:
         logging.info(output)

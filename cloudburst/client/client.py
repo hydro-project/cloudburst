@@ -254,6 +254,7 @@ class CloudburstConnection():
                 return CloudburstFuture(r.response_id, self.kvs_client,
                                      serializer)
             else:
+                raise RuntimeError(str(r))
                 return None
 
     def delete_dag(self, dname):
