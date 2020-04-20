@@ -114,16 +114,16 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                 if ip in candidate_nodes:
                     return ip, tid
 
-        for executor in self.backoff:
-            executors.discard(executor)
+        # for executor in self.backoff:
+        #     executors.discard(executor)
 
-        # Generate a list of all the keys in the system; if any of these nodes
-        # have received many requests, we remove them from the executor set
-        # with high probability.
-        for key in self.running_counts:
-            if (len(self.running_counts[key]) > 1000 and sys_random.random() >
-                    self.random_threshold):
-                executors.discard(key)
+        # # Generate a list of all the keys in the system; if any of these nodes
+        # # have received many requests, we remove them from the executor set
+        # # with high probability.
+        # for key in self.running_counts:
+        #     if (len(self.running_counts[key]) > 1000 and sys_random.random() >
+        #             self.random_threshold):
+        #         executors.discard(key)
 
         if len(executors) == 0:
             return None
@@ -201,8 +201,6 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             for fn, thread in self.pending_dags[dag_name]:
                 if fn in colocated:
                     already_pinned.add((fn, thread))
-            self.log.write('already pinned is ' + str(already_pinned) + '\n')
-            self.log.flush()
             candidate_nodes = set()
 
             if len(already_pinned) > 0:
@@ -225,9 +223,6 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                     if nodes[node] == 3:
                         for i in range(3):
                             candidates.add((node, i))
-
-                self.log.write('Candidate for pin are ' + str(candidates) + '\n')
-                self.log.flush()
 
         if len(candidates) == 0: # There no valid executors to colocate on.
             return self.pin_function(dag_name, function_ref, [])
@@ -358,7 +353,8 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                     not_lone_executor.append(False)
 
             if all(not_lone_executor):
-                self.backoff[key] = time.time()
+                pass
+                # self.backoff[key] = time.time()
 
     def update(self):
         # Periodically clean up the running counts map to drop any times older

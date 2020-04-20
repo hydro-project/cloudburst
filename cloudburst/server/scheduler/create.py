@@ -81,9 +81,6 @@ def create_dag(dag_create_socket, pusher_cache, kvs, dags, policy,
         for _ in range(num_replicas):
             colocated = []
 
-            logging.info(dag.colocated)
-            logging.info(fref.name)
-            logging.info(fref.name in dag.colocated)
             if fref.name in dag.colocated:
                 colocated = list(dag.colocated)
 
