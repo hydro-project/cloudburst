@@ -45,7 +45,9 @@ def call_function(func_call_socket, pusher_cache, policy):
     refs = list(filter(lambda arg: type(arg) == CloudburstReference,
                        map(lambda arg: serializer.load(arg),
                            call.arguments.values)))
-    result = policy.pick_executor(refs)
+    result = None
+    while result is None:
+        result = policy.pick_executor(refs)
 
     response = GenericResponse()
     if result is None:
