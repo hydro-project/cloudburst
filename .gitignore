@@ -15,6 +15,7 @@
 # project specific
 *log*.txt
 *tmp*
+pids
 
 # ignore output files from testing
 output*
