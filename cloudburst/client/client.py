@@ -194,7 +194,8 @@ class CloudburstConnection():
         return r.success, r.error
 
     def call_dag(self, dname, arg_map, direct_response=False,
-                 consistency=NORMAL, output_key=None, client_id=None):
+                 consistency=NORMAL, output_key=None, client_id=None,
+                 dry_run=False, continuation=None):
         '''
         Issues a new request to execute the DAG. Returns a CloudburstFuture that
 
@@ -230,6 +231,17 @@ class CloudburstConnection():
 
         if direct_response:
             dc.response_address = self.response_address
+
+        if continuation:
+            if bool(continuation.response_address) != direct_response:
+                raise RuntimeError('Continuation does not have same direct'
+                                   + ' response setting as current call.')
+
+            dc.continuation.name = continuation.name
+            dc.continuation.call.CopyFrom(continuation)
+
+        if dry_run:
+            return dc
 
         self.dag_call_sock.send(dc.SerializeToString())
 

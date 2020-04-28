@@ -216,7 +216,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 success = exec_dag_function(pusher_cache, client,
                                             triggers, function_cache[fname],
                                             schedule, user_library,
-                                            dag_runtimes, cache)
+                                            dag_runtimes, cache, schedulers)
                 user_library.close()
 
                 del received_triggers[trkey]
@@ -277,7 +277,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                                                 triggers,
                                                 function_cache[fname],
                                                 schedule, user_library,
-                                                dag_runtimes, cache)
+                                                dag_runtimes, cache,
+                                                schedulers)
                     user_library.close()
                     del received_triggers[key]
 

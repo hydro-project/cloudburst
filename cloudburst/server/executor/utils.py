@@ -12,6 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import random
+
 import cloudburst.server.utils as sutils
 from cloudburst.shared.proto.cloudburst_pb2 import NORMAL
 from cloudburst.shared.serializer import Serializer
@@ -84,3 +86,9 @@ def get_depart_done_addr(mgmt_ip):
 
 def get_cache_gc_address(ip):
     return 'tcp://' + ip + ':' + str(CACHE_VERISON_GC_PORT)
+
+def get_continuation_address(schedulers):
+    # If this variable is not set, that means we are running in local mode, so
+    # we just use 127.0.0.1 as the scheduler address.
+    addr = random.choice(schedulers)
+    return  'tcp://' + addr + ':' +  str(sutils.CONTINUATION_PORT)
