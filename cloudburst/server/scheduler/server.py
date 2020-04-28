@@ -126,7 +126,10 @@ def scheduler(ip, mgmt_ip, route_addr):
 
     management_request_socket = context.socket(zmq.REQ)
     management_request_socket.setsockopt(zmq.RCVTIMEO, 500)
+    # By setting this flag, zmq matches replies with requests.
     management_request_socket.setsockopt(zmq.REQ_CORRELATE, 1)
+    # Relax strict alternation between request and reply.
+    # For detailed explanation, see here: http://api.zeromq.org/4-1:zmq-setsockopt
     management_request_socket.setsockopt(zmq.REQ_RELAXED, 1)
     management_request_socket.connect(sched_utils.get_scheduler_list_address(mgmt_ip))
 
@@ -252,7 +255,9 @@ def scheduler(ip, mgmt_ip, route_addr):
             # local mode, so there is no need to deal with caches and other
             # schedulers.
             if mgmt_ip:
-                schedulers = sched_utils.get_ip_set(management_request_socket, False)
+                latest_schedulers = sched_utils.get_ip_set(management_request_socket, False)
+                if latest_schedulers:
+                    schedulers = latest_schedulers
 
         if end - start > REPORT_THRESHOLD:
             num_unique_executors = policy.get_unique_executors()

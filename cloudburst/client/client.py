@@ -62,6 +62,7 @@ class CloudburstConnection():
         kvs_addr = self._connect()
         while not kvs_addr:
             logging.info('Connection timed out, retrying')
+            print('Connection timed out, retrying')
             kvs_addr = self._connect()
 
         # Picks a random offset of 10, mostly to alleviate port conflicts when
@@ -305,7 +306,6 @@ class CloudburstConnection():
         return r.response_id
 
     def _connect(self):
-        logging.info('Connecting to scheduler service')
         sckt = self.context.socket(zmq.REQ)
         sckt.setsockopt(zmq.RCVTIMEO, 1000)
         sckt.connect(self.service_addr % CONNECT_PORT)
@@ -313,11 +313,9 @@ class CloudburstConnection():
 
         try:
             result = sckt.recv_string()
-            logging.info('Connected to scheduler service')
             return result
         except zmq.ZMQError as e:
             if e.errno == zmq.EAGAIN:
-                logging.error('Connecting timed out')
                 return None
             else:
                 raise e

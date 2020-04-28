@@ -111,7 +111,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                 executors.discard(key)
 
         if len(executors) == 0:
-            logging.error('Length of executors is 0.')
+            logging.error('No available executors.')
             return None
 
         executor_ips = set([e[0] for e in executors])
@@ -162,7 +162,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         self.unique_executors.add(max_ip)
 
         if not max_ip:
-            logging.error('Returning None for the executor ip.')
+            logging.error('No available executors.')
 
         return max_ip
 

@@ -81,7 +81,7 @@ def get_scheduler_update_address(ip):
 
 
 def get_ip_set(management_request_socket, exec_threads=True):
-    # we can send an empty request because the response is always thes same
+    # we can send an empty request because the response is always the same
     management_request_socket.send(b'')
 
     try:
@@ -99,7 +99,7 @@ def get_ip_set(management_request_socket, exec_threads=True):
             return set(ips.keys)
     except zmq.ZMQError as e:
         if e.errno == zmq.EAGAIN:
-            return set()
+            return None
         else:
             raise e
 
