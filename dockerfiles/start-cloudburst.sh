@@ -38,7 +38,7 @@ git remote remove origin
 git remote add origin https://github.com/$ANNA_REPO_ORG/anna
 while ! (git fetch -p origin)
 do
-  echo "fail to resolve git, retrying"
+  echo "git fetch failed, retrying"
 done
 git checkout -b brnch origin/$ANNA_REPO_BRANCH
 git submodule sync
@@ -58,7 +58,7 @@ git remote remove origin
 git remote add origin https://github.com/$REPO_ORG/cloudburst
 while ! (git fetch -p origin)
 do
-  echo "fail to resolve git, retrying"
+  echo "git fetch failed, retrying"
 done
 git checkout -b brnch origin/$REPO_BRANCH
 git submodule sync
