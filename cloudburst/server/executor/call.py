@@ -87,6 +87,16 @@ def exec_function(exec_socket, kvs, user_library, cache, function_cache):
 
 
 def _exec_func_normal(kvs, func, args, user_lib, cache):
+    # NOTE: We may not want to keep this permanently but need it for
+    # continuations if the upstream function returns multiple things.
+    processed = tuple()
+    for arg in args:
+        if type(arg) == tuple:
+            processed += arg
+        else:
+            processed += (arg,)
+    args = processed
+
     refs = list(filter(lambda a: isinstance(a, CloudburstReference), args))
 
     if refs:
