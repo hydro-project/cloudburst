@@ -31,12 +31,11 @@ import cloudburst.server.utils as sutils
 
 BENCHMARK_START_PORT = 3000
 
+logging.basicConfig(filename='log_benchmark.txt', level=logging.INFO,
+                    format='%(asctime)s %(message)s')
 
 def benchmark(ip, cloudburst_address, tid):
     cloudburst = CloudburstConnection(cloudburst_address, ip, tid)
-
-    logging.basicConfig(filename='log_benchmark.txt', level=logging.INFO,
-                        format='%(asctime)s %(message)s')
 
     ctx = zmq.Context(1)
 
