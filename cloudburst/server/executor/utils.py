@@ -29,7 +29,7 @@ EXECUTOR_DEPART_PORT = 7005
 CACHE_VERISON_GC_PORT = 7200
 
 
-def generate_error_response(schedule, client):
+def generate_error_response(schedule, client, fname):
     sutils.error.error = EXECUTION_ERROR
     result = ('ERROR: ' + fname + ' not in function cache', sutils.error.SerializeToString())
     if schedule.consistency == NORMAL:

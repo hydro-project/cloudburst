@@ -214,7 +214,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
                 if fname not in function_cache:
                     logging.error('%s not in function cache', fname)
-                    utils.generate_error_response(schedule, client)
+                    utils.generate_error_response(schedule, client, fname)
                     continue
 
                 success = exec_dag_function(pusher_cache, client,
@@ -279,7 +279,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
                     if fname not in function_cache:
                         logging.error('%s not in function cache', fname)
-                        utils.generate_error_response(schedule, client)
+                        utils.generate_error_response(schedule, client, fname)
                         continue
 
                     success = exec_dag_function(pusher_cache, client,
