@@ -16,12 +16,28 @@ import cloudburst.server.utils as sutils
 from cloudburst.shared.proto.cloudburst_pb2 import NORMAL
 from cloudburst.shared.serializer import Serializer
 
+from anna.lattices import (
+    MultiKeyCausalLattice,
+)
+
+from cloudburst.shared.proto.cloudburst_pb2 import EXECUTION_ERROR
+
 serializer = Serializer()
 
 UTILIZATION_REPORT_PORT = 7003
 EXECUTOR_DEPART_PORT = 7005
 CACHE_VERISON_GC_PORT = 7200
 
+
+def generate_error_response(schedule, client):
+    sutils.error.error = EXECUTION_ERROR
+    result = ('ERROR: ' + fname + ' not in function cache', sutils.error.SerializeToString())
+    if schedule.consistency == NORMAL:
+        result = serializer.dump_lattice(result)
+        client.put(schedule.output_key, result)
+    else:
+        result = serializer.dump_lattice(result, MultiKeyCausalLattice)
+        client.causal_put(schedule.output_key, result)
 
 def retrieve_function(name, kvs, user_library, consistency=NORMAL):
     kvs_name = sutils.get_func_kvs_name(name)

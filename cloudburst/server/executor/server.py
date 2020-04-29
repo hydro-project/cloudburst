@@ -30,20 +30,11 @@ from cloudburst.shared.proto.cloudburst_pb2 import (
     DagSchedule,
     DagTrigger,
     MULTIEXEC # Cloudburst's execution types
-    NORMAL # Default consistency type
 )
 from cloudburst.shared.proto.internal_pb2 import (
     ExecutorStatistics,
     ThreadStatus,
 )
-
-from anna.lattices import (
-    MultiKeyCausalLattice,
-)
-
-from cloudburst.shared.serializer import Serializer
-
-serializer = Serializer()
 
 REPORT_THRESH = 5
 
@@ -223,14 +214,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
                 if fname not in function_cache:
                     logging.error('%s not in function cache', fname)
-                    sutils.error.error = EXECUTION_ERROR
-                    result = ('ERROR: ' + fname + ' not in function cache', sutils.error.SerializeToString())
-                    if schedule.consistency == NORMAL:
-                        result = serializer.dump_lattice(result)
-                        succeed = client.put(schedule.output_key, result)
-                    else:
-                        result = serializer.dump_lattice(result, MultiKeyCausalLattice)
-                        succeed = client.causal_put(schedule.output_key, result)
+                    utils.generate_error_response(schedule, client)
                     continue
 
                 success = exec_dag_function(pusher_cache, client,
@@ -295,14 +279,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
                     if fname not in function_cache:
                         logging.error('%s not in function cache', fname)
-                        sutils.error.error = EXECUTION_ERROR
-                        result = ('ERROR: ' + fname + ' not in function cache', sutils.error.SerializeToString())
-                        if schedule.consistency == NORMAL:
-                            result = serializer.dump_lattice(result)
-                            succeed = client.put(schedule.output_key, result)
-                        else:
-                            result = serializer.dump_lattice(result, MultiKeyCausalLattice)
-                            succeed = client.causal_put(schedule.output_key, result)
+                        utils.generate_error_response(schedule, client)
                         continue
 
                     success = exec_dag_function(pusher_cache, client,
