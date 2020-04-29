@@ -13,14 +13,15 @@
 #  limitations under the License.
 
 import cloudburst.server.utils as sutils
-from cloudburst.shared.proto.cloudburst_pb2 import NORMAL
+from cloudburst.shared.proto.cloudburst_pb2 import (
+    NORMAL,
+    EXECUTION_ERROR
+)
 from cloudburst.shared.serializer import Serializer
 
 from anna.lattices import (
     MultiKeyCausalLattice,
 )
-
-from cloudburst.shared.proto.cloudburst_pb2 import EXECUTION_ERROR
 
 serializer = Serializer()
 
