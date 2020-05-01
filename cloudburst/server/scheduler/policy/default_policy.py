@@ -111,6 +111,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                 executors.discard(key)
 
         if len(executors) == 0:
+            logging.error('No available executors.')
             return None
 
         executor_ips = set([e[0] for e in executors])
@@ -159,6 +160,10 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             self.unpinned_executors.discard(max_ip)
 
         self.unique_executors.add(max_ip)
+
+        if not max_ip:
+            logging.error('No available executors.')
+
         return max_ip
 
     def pin_function(self, dag_name, function_ref):

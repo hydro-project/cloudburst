@@ -12,6 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import zmq
+
 from anna.lattices import SetLattice
 
 import cloudburst.server.utils as sutils
@@ -78,24 +80,28 @@ def get_scheduler_update_address(ip):
     return 'tcp://' + ip + ':' + str(sutils.SCHED_UPDATE_PORT)
 
 
-def get_ip_set(request_ip, socket_cache, exec_threads=True):
-    sckt = socket_cache.get(request_ip)
+def get_ip_set(management_request_socket, exec_threads=True):
+    # we can send an empty request because the response is always the same
+    management_request_socket.send(b'')
 
-    # we can send an empty request because the response is always thes same
-    sckt.send(b'')
+    try:
+        ips = StringSet()
+        ips.ParseFromString(management_request_socket.recv())
+        result = set()
 
-    ips = StringSet()
-    ips.ParseFromString(sckt.recv())
-    result = set()
+        if exec_threads:
+            for ip in ips.keys:
+                for i in range(NUM_EXEC_THREADS):
+                    result.add((ip, i))
 
-    if exec_threads:
-        for ip in ips.keys:
-            for i in range(NUM_EXEC_THREADS):
-                result.add((ip, i))
-
-        return result
-    else:
-        return set(ips.keys)
+            return result
+        else:
+            return set(ips.keys)
+    except zmq.ZMQError as e:
+        if e.errno == zmq.EAGAIN:
+            return None
+        else:
+            raise e
 
 
 def find_dag_source(dag):
