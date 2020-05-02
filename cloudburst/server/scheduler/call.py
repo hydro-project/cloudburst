@@ -91,7 +91,7 @@ def call_dag(call, pusher_cache, dags, policy):
 
         colocated = []
         if fref.name in dag.colocated:
-            colocated = list(dag.colocated)
+            colocated = list(dag.colocated, colocated, schedule)
 
         result = policy.pick_executor(refs, fref.name)
         if result is None:

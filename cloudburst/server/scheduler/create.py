@@ -70,7 +70,6 @@ def create_dag(dag_create_socket, pusher_cache, kvs, dags, policy,
         return
 
     logging.info('Creating DAG %s.' % (dag.name))
-    logging.info(dag.colocated)
 
     # We persist the DAG in the KVS, so other schedulers can read the DAG when
     # they hear about it.
