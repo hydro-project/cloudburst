@@ -114,16 +114,16 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                 if ip in candidate_nodes:
                     return ip, tid
 
-        for executor in self.backoff:
-            executors.discard(executor)
+        # for executor in self.backoff:
+        #     executors.discard(executor)
 
-        # Generate a list of all the keys in the system; if any of these nodes
-        # have received many requests, we remove them from the executor set
-        # with high probability.
-        for key in self.running_counts:
-            if (len(self.running_counts[key]) > 1000 and sys_random.random() >
-                    self.random_threshold):
-                executors.discard(key)
+        # # Generate a list of all the keys in the system; if any of these nodes
+        # # have received many requests, we remove them from the executor set
+        # # with high probability.
+        # for key in self.running_counts:
+        #     if (len(self.running_counts[key]) > 1000 and sys_random.random() >
+        #             self.random_threshold):
+        #         executors.discard(key)
 
         if len(executors) == 0:
             return None
