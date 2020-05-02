@@ -32,12 +32,13 @@ from cloudburst.server.scheduler.utils import (
 
 sys_random = random.SystemRandom()
 
+NUM_EXECUTOR_THREADS = 3
+
 
 class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
     def __init__(self, pin_accept_socket, pusher_cache, kvs_client, ip,
                  random_threshold=0.20, local=False):
-        self.log = open('log_policy.txt', 'w')
         # This scheduler's IP address.
         self.ip = ip
 
@@ -114,16 +115,16 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                 if ip in candidate_nodes:
                     return ip, tid
 
-        # for executor in self.backoff:
-        #     executors.discard(executor)
+        for executor in self.backoff:
+            executors.discard(executor)
 
-        # # Generate a list of all the keys in the system; if any of these nodes
-        # # have received many requests, we remove them from the executor set
-        # # with high probability.
-        # for key in self.running_counts:
-        #     if (len(self.running_counts[key]) > 1000 and sys_random.random() >
-        #             self.random_threshold):
-        #         executors.discard(key)
+        # Generate a list of all the keys in the system; if any of these nodes
+        # have received many requests, we remove them from the executor set
+        # with high probability.
+        for key in self.running_counts:
+            if (len(self.running_counts[key]) > 1000 and sys_random.random() >
+                    self.random_threshold):
+                executors.discard(key)
 
         if len(executors) == 0:
             return None
@@ -177,9 +178,6 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         return max_ip
 
     def pin_function(self, dag_name, function_ref, colocated):
-        self.log.write('function is ' + function_ref.name + '\n')
-        self.log.write('colcoated is ' + str(colocated) + '\n')
-        self.log.flush()
         # If there are no functions left to choose from, then we return None,
         # indicating that we ran out of resources to use.
         if len(self.unpinned_executors) == 0:
@@ -193,8 +191,6 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         if len(colocated) == 0:
             candidates = set(self.unpinned_executors)
         else:
-            self.log.write('Attempting to colocate ' + function_ref.name + '\n')
-            self.log.flush()
             candidates = set()
 
             already_pinned = set()
@@ -221,7 +217,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
                 for node in nodes:
                     if nodes[node] == 3:
-                        for i in range(3):
+                        for i in range(NUM_EXECUTOR_THREADS):
                             candidates.add((node, i))
 
         if len(candidates) == 0: # There no valid executors to colocate on.
@@ -353,8 +349,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                     not_lone_executor.append(False)
 
             if all(not_lone_executor):
-                pass
-                # self.backoff[key] = time.time()
+                self.backoff[key] = time.time()
 
     def update(self):
         # Periodically clean up the running counts map to drop any times older
