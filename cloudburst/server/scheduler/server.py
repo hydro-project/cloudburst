@@ -35,10 +35,12 @@ from cloudburst.server.scheduler.policy.default_policy import (
 import cloudburst.server.scheduler.utils as sched_utils
 import cloudburst.server.utils as sutils
 from cloudburst.shared.proto.cloudburst_pb2 import (
+    Continuation,
     Dag,
     DagCall,
     GenericResponse,
-    NO_SUCH_DAG  # Cloudburst's error types
+    NO_SUCH_DAG,  # Cloudburst's error types
+    Value
 )
 from cloudburst.shared.proto.internal_pb2 import (
     ExecutorStatistics,
@@ -89,7 +91,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
     # Maintains a list of all other schedulers in the system, so we can
     # propagate metadata to them.
-    schedulers = []
+    schedulers = set()
 
     connect_socket = context.socket(zmq.REP)
     connect_socket.bind(sutils.BIND_ADDR_TEMPLATE % (CONNECT_PORT))
@@ -124,7 +126,19 @@ def scheduler(ip, mgmt_ip, route_addr):
     pin_accept_socket.bind(sutils.BIND_ADDR_TEMPLATE %
                            (sutils.PIN_ACCEPT_PORT))
 
-    requestor_cache = SocketCache(context, zmq.REQ)
+    continuation_socket = context.socket(zmq.PULL)
+    continuation_socket.bind(sutils.BIND_ADDR_TEMPLATE %
+                             (sutils.CONTINUATION_PORT))
+
+    management_request_socket = context.socket(zmq.REQ)
+    management_request_socket.setsockopt(zmq.RCVTIMEO, 500)
+    # By setting this flag, zmq matches replies with requests.
+    management_request_socket.setsockopt(zmq.REQ_CORRELATE, 1)
+    # Relax strict alternation between request and reply.
+    # For detailed explanation, see here: http://api.zeromq.org/4-1:zmq-setsockopt
+    management_request_socket.setsockopt(zmq.REQ_RELAXED, 1)
+    management_request_socket.connect(sched_utils.get_scheduler_list_address(mgmt_ip))
+
     pusher_cache = SocketCache(context, zmq.PUSH)
 
     poller = zmq.Poller()
@@ -137,6 +151,7 @@ def scheduler(ip, mgmt_ip, route_addr):
     poller.register(list_socket, zmq.POLLIN)
     poller.register(exec_status_socket, zmq.POLLIN)
     poller.register(sched_update_socket, zmq.POLLIN)
+    poller.register(continuation_socket, zmq.POLLIN)
 
     # Start the policy engine.
     policy = DefaultCloudburstSchedulerPolicy(pin_accept_socket, pusher_cache,
@@ -232,10 +247,27 @@ def scheduler(ip, mgmt_ip, route_addr):
                     dags[dag.name] = (dag, sched_utils.find_dag_source(dag))
 
                     for fname in dag.functions:
-                        if fname not in call_frequency:
-                            call_frequency[fname] = 0
+                        if fname.name not in call_frequency:
+                            call_frequency[fname.name] = 0
 
             policy.update_function_locations(status.function_locations)
+
+        if continuation_socket in socks and socks[continuation_socket] == \
+                zmq.POLLIN:
+            continuation = Continuation()
+            continuation.ParseFromString(continuation_socket.recv())
+
+            call = continuation.call
+            call.name = continuation.name
+
+            result = Value()
+            result.ParseFromString(continuation.result)
+
+            dag, sources = dags[call.name]
+            for source in sources:
+                call.function_args[source].values.extend([result])
+
+            call_dag(call, pusher_cache, dags, policy, continuation.id)
 
         end = time.time()
 
@@ -247,9 +279,9 @@ def scheduler(ip, mgmt_ip, route_addr):
             # local mode, so there is no need to deal with caches and other
             # schedulers.
             if mgmt_ip:
-                schedulers = sched_utils.get_ip_set(
-                    sched_utils.get_scheduler_list_address(mgmt_ip),
-                    requestor_cache, False)
+                latest_schedulers = sched_utils.get_ip_set(management_request_socket, False)
+                if latest_schedulers:
+                    schedulers = latest_schedulers
 
         if end - start > REPORT_THRESHOLD:
             num_unique_executors = policy.get_unique_executors()

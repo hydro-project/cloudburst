@@ -13,7 +13,6 @@
 #  limitations under the License.
 
 import logging
-import os
 import sys
 import time
 
@@ -211,12 +210,17 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     ((len(received_triggers[trkey]) == len(schedule.triggers)) \
                     or (fref.type == MULTIEXEC))):
 
-                triggers = list(received_triggers[key].values())
+                triggers = list(received_triggers[trkey].values())
+
+                if fname not in function_cache:
+                    logging.error('%s not in function cache', fname)
+                    utils.generate_error_response(schedule, client, fname)
+                    continue
 
                 success = exec_dag_function(pusher_cache, client,
                                             triggers, function_cache[fname],
                                             schedule, user_library,
-                                            dag_runtimes, cache)
+                                            dag_runtimes, cache, schedulers)
                 user_library.close()
 
                 del received_triggers[trkey]
@@ -273,11 +277,17 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     else:
                         triggers = list(received_triggers[key].values())
 
+                    if fname not in function_cache:
+                        logging.error('%s not in function cache', fname)
+                        utils.generate_error_response(schedule, client, fname)
+                        continue
+
                     success = exec_dag_function(pusher_cache, client,
                                                 triggers,
                                                 function_cache[fname],
                                                 schedule, user_library,
-                                                dag_runtimes, cache)
+                                                dag_runtimes, cache,
+                                                schedulers)
                     user_library.close()
                     del received_triggers[key]
 
@@ -393,7 +403,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
                 # We specifically pass 1 as the exit code when ending our
                 # process so that the wrapper script does not restart us.
-                os._exit(1)
+                sys.exit(1)
 
 
 if __name__ == '__main__':

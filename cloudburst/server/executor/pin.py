@@ -37,8 +37,6 @@ def pin(pin_socket, pusher_cache, kvs, status, function_cache, runtimes,
         sckt.send(sutils.error.SerializeToString())
         return
 
-    sckt.send(sutils.ok_resp)
-
     func = utils.retrieve_function(pin_msg.name, kvs, user_library)
 
     # The function must exist -- because otherwise the DAG couldn't be
@@ -56,6 +54,8 @@ def pin(pin_socket, pusher_cache, kvs, status, function_cache, runtimes,
     runtimes[name] = []
     exec_counts[name] = 0
     logging.info('Adding function %s to my local pinned functions.' % (name))
+    
+    sckt.send(sutils.ok_resp)
 
 
 def unpin(unpin_socket, status, function_cache, runtimes, exec_counts):

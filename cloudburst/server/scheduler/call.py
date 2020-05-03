@@ -65,14 +65,21 @@ def call_function(func_call_socket, pusher_cache, policy):
     func_call_socket.send(response.SerializeToString())
 
 
-def call_dag(call, pusher_cache, dags, policy):
+def call_dag(call, pusher_cache, dags, policy, request_id=None):
     dag, sources = dags[call.name]
 
     schedule = DagSchedule()
-    schedule.id = str(uuid.uuid4())
     schedule.dag.CopyFrom(dag)
     schedule.start_time = time.time()
     schedule.consistency = call.consistency
+
+    if request_id:
+        schedule.id = request_id
+    else:
+        schedule.id = str(uuid.uuid4())
+
+    if call.continuation:
+        schedule.continuation.CopyFrom(call.continuation)
 
     if call.response_address:
         schedule.response_address = call.response_address
@@ -93,7 +100,7 @@ def call_dag(call, pusher_cache, dags, policy):
         if fref.name in dag.colocated:
             colocated = list(dag.colocated, colocated, schedule)
 
-        result = policy.pick_executor(refs, fref.name)
+        result = policy.pick_executor(refs, fref.name, colocated, schedule)
         if result is None:
             response = GenericResponse()
             response.success = False
