@@ -392,7 +392,7 @@ class TestExecutorCall(unittest.TestCase):
         schedule, triggers = self._create_fn_schedule(dag, arg, fname, [fname])
 
         exec_dag_function(self.pusher_cache, self.kvs_client, triggers, func,
-                          schedule, self.user_library, {}, {})
+                          schedule, self.user_library, {}, {}, [])
 
         # Assert that there have been 0 messages sent.
         self.assertEqual(len(self.socket.outbox), 0)
@@ -430,7 +430,7 @@ class TestExecutorCall(unittest.TestCase):
         DEFAULT_VC.serialize(kv.vector_clock)
 
         exec_dag_function(self.pusher_cache, self.kvs_client, triggers, func,
-                          schedule, self.user_library, {}, {})
+                          schedule, self.user_library, {}, {}, [])
 
         # Assert that there have been 0 messages sent.
         self.assertEqual(len(self.socket.outbox), 0)
@@ -474,7 +474,7 @@ class TestExecutorCall(unittest.TestCase):
                                                                         sname])
 
         exec_dag_function(self.pusher_cache, self.kvs_client, triggers, incr,
-                          schedule, self.user_library, {}, {})
+                          schedule, self.user_library, {}, {}, [])
 
         # Assert that there has been a message sent.
         self.assertEqual(len(self.pusher_cache.socket.outbox), 1)
@@ -512,7 +512,7 @@ class TestExecutorCall(unittest.TestCase):
                                                       [iname, sname], MULTI)
 
         exec_dag_function(self.pusher_cache, self.kvs_client, triggers, incr,
-                          schedule, self.user_library, {}, {})
+                          schedule, self.user_library, {}, {}, [])
 
         # Assert that there has been a message sent.
         self.assertEqual(len(self.pusher_cache.socket.outbox), 1)
@@ -557,7 +557,7 @@ class TestExecutorCall(unittest.TestCase):
             MULTI)
 
         exec_dag_function(self.pusher_cache, self.kvs_client, triggers, incr,
-                          schedule, self.user_library, {}, {})
+                          schedule, self.user_library, {}, {}, [])
 
         # Assert that there has been a message sent.
         self.assertEqual(len(self.pusher_cache.socket.outbox), 1)
@@ -611,7 +611,7 @@ class TestExecutorCall(unittest.TestCase):
 
         result = exec_dag_function(self.pusher_cache, self.kvs_client,
                                    triggers, square, schedule,
-                                   self.user_library, {}, {})
+                                   self.user_library, {}, {}, [])
 
         self.assertFalse(result)
         data = self.kvs_client.get(schedule.id)
@@ -638,7 +638,7 @@ class TestExecutorCall(unittest.TestCase):
 
         result = exec_dag_function(self.pusher_cache, self.kvs_client,
                                    triggers, square, schedule,
-                                   self.user_library, {}, {})
+                                   self.user_library, {}, {}, [])
 
         self.assertTrue(result)
         data = self.kvs_client.get(schedule.id)
