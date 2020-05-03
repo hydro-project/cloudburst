@@ -96,7 +96,11 @@ def call_dag(call, pusher_cache, dags, policy, request_id=None):
         refs = list(filter(lambda arg: type(arg) == CloudburstReference,
                            map(lambda arg: serializer.load(arg), args)))
 
-        result = policy.pick_executor(refs, fref.name)
+        colocated = []
+        if fref.name in dag.colocated:
+            colocated = list(dag.colocated, colocated, schedule)
+
+        result = policy.pick_executor(refs, fref.name, colocated, schedule)
         if result is None:
             response = GenericResponse()
             response.success = False

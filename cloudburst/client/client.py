@@ -148,7 +148,7 @@ class CloudburstConnection():
         else:
             raise RuntimeError(f'Unexpected error while registering function: {resp}.')
 
-    def register_dag(self, name, functions, connections):
+    def register_dag(self, name, functions, connections, colocated=[]):
         '''
         Registers a new DAG with the system. This operation will fail if any of
         the functions provided cannot be identified in the system.
@@ -157,6 +157,8 @@ class CloudburstConnection():
         functions: A list of names of functions to be included in this DAG.
         connections: A list of ordered pairs of function names that represent
         the edges in this DAG.
+        colocated: A list of function names that (if possible) should be
+        colocated.
         '''
 
         flist = self._get_func_list()
@@ -171,6 +173,8 @@ class CloudburstConnection():
 
         dag = Dag()
         dag.name = name
+        dag.colocated.extend(colocated)
+
         for function in functions:
             ref = dag.functions.add()
 
@@ -268,8 +272,8 @@ class CloudburstConnection():
                 return CloudburstFuture(r.response_id, self.kvs_client,
                                      serializer)
         else:
-            logging.error('Scheduling request failed')
-            return None
+            logging.error('Scheduler returned unexpected error: \n' + str(r))
+            raise RuntimeError(str(r.error))
 
     def delete_dag(self, dname):
         '''

@@ -78,7 +78,12 @@ def create_dag(dag_create_socket, pusher_cache, kvs, dags, policy,
 
     for fref in dag.functions:
         for _ in range(num_replicas):
-            success = policy.pin_function(dag.name, fref)
+            colocated = []
+
+            if fref.name in dag.colocated:
+                colocated = list(dag.colocated)
+
+            success = policy.pin_function(dag.name, fref, colocated)
 
             # The policy engine will only return False if it ran out of
             # resources on which to attempt to pin this function.

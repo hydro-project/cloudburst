@@ -100,7 +100,7 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         self.pin_socket.inbox.append(sutils.error.SerializeToString())
 
         success = self.policy.pin_function(
-            'dag', Dag.FunctionReference(name='function'))
+            'dag', Dag.FunctionReference(name='function'), [])
         self.assertTrue(success)
 
         # Ensure that both remaining executors have been removed from unpinned
