@@ -27,6 +27,7 @@ from anna.lattices import (
 from cloudburst.server.executor import utils
 import cloudburst.server.utils as sutils
 from cloudburst.shared.proto.cloudburst_pb2 import (
+    Continuation,
     DagTrigger,
     FunctionCall,
     NORMAL, MULTI,  # Cloudburst's consistency modes,
@@ -86,6 +87,16 @@ def exec_function(exec_socket, kvs, user_library, cache, function_cache):
 
 
 def _exec_func_normal(kvs, func, args, user_lib, cache):
+    # NOTE: We may not want to keep this permanently but need it for
+    # continuations if the upstream function returns multiple things.
+    processed = tuple()
+    for arg in args:
+        if type(arg) == tuple:
+            processed += arg
+        else:
+            processed += (arg,)
+    args = processed
+
     refs = list(filter(lambda a: isinstance(a, CloudburstReference), args))
 
     if refs:
@@ -209,12 +220,12 @@ def _resolve_ref_causal(refs, kvs, schedule, key_version_locations,
 
 
 def exec_dag_function(pusher_cache, kvs, triggers, function, schedule,
-                      user_library, dag_runtimes, cache):
+                      user_library, dag_runtimes, cache, schedulers):
     if schedule.consistency == NORMAL:
         finished, success = _exec_dag_function_normal(pusher_cache, kvs,
                                                       triggers, function,
                                                       schedule, user_library,
-                                                      cache)
+                                                      cache, schedulers)
     else:
         finished, success = _exec_dag_function_causal(pusher_cache, kvs,
                                                       triggers, function,
@@ -247,7 +258,7 @@ def _construct_trigger(sid, fname, result):
 
 
 def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
-                              user_lib, cache):
+                              user_lib, cache, schedulers):
     fname = schedule.target_function
     fargs = list(schedule.arguments[fname].values)
 
@@ -279,7 +290,16 @@ def _exec_dag_function_normal(pusher_cache, kvs, triggers, function, schedule,
             sckt.send(new_trigger.SerializeToString())
 
     if is_sink:
-        if schedule.response_address:
+        if schedule.continuation.name:
+            cont = schedule.continuation
+            cont.id = schedule.id
+            cont.result = serializer.dump(result)
+
+            logging.info('Sending continuation to scheduler for DAG %s.' %
+                         (schedule.id))
+            sckt = pusher_cache.get(utils.get_continuation_address(schedulers))
+            sckt.send(cont.SerializeToString())
+        elif schedule.response_address:
             sckt = pusher_cache.get(schedule.response_address)
             logging.info('DAG %s (ID %s) result returned to requester.' %
                          (schedule.dag.name, trigger.id))

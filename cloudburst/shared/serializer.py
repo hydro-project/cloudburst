@@ -63,7 +63,6 @@ class Serializer():
         if not valobj:
             valobj = Value()
 
-
         # If we are attempting to pass a future into another function, we
         # simply turn it into a reference because the runtime knows how to
         # automatically resolve it.
