@@ -148,7 +148,7 @@ class CloudburstConnection():
         else:
             raise RuntimeError(f'Unexpected error while registering function: {resp}.')
 
-    def register_dag(self, name, functions, connections):
+    def register_dag(self, name, functions, connections, gpu_functions=[]):
         '''
         Registers a new DAG with the system. This operation will fail if any of
         the functions provided cannot be identified in the system.
@@ -181,6 +181,9 @@ class CloudburstConnection():
             else:
                 fname = function
                 invalids = []
+
+            if function in gpu_functions:
+                ref.gpu = True
 
             ref.name = fname
             for invalid in invalids:

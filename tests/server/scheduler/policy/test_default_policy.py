@@ -59,7 +59,7 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         self.policy.running_counts.clear()
         self.policy.backoff.clear()
         self.policy.key_locations.clear()
-        self.policy.unpinned_executors.clear()
+        self.policy.unpinned_cpu_executors.clear()
         self.policy.function_locations.clear()
         self.policy.pending_dags.clear()
         self.policy.thread_statuses.clear()
@@ -73,7 +73,7 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         # Create two executors, one of which has received too many requests,
         # and the other of which has reported high load.
         address_set = {(self.ip, 1), (self.ip, 2)}
-        self.policy.unpinned_executors.update(address_set)
+        self.policy.unpinned_cpu_executors.update(address_set)
 
         self.policy.backoff[(self.ip, 1)] = time.time()
         self.policy.running_counts[self.ip, 2] = set()
@@ -93,7 +93,7 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         '''
         # Create two unpinned executors.
         address_set = {(self.ip, 1), (self.ip, 2)}
-        self.policy.unpinned_executors.update(address_set)
+        self.policy.unpinned_cpu_executors.update(address_set)
 
         # Create one failing and one successful response.
         self.pin_socket.inbox.append(sutils.ok_resp)
@@ -105,7 +105,7 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
 
         # Ensure that both remaining executors have been removed from unpinned
         # and that the DAG commit is pending.
-        self.assertEqual(len(self.policy.unpinned_executors), 0)
+        self.assertEqual(len(self.policy.unpinned_cpu_executors), 0)
         self.assertEqual(len(self.policy.pending_dags), 1)
 
     def test_process_status(self):
@@ -132,7 +132,7 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
 
         key = (status.ip, status.tid)
 
-        self.assertTrue(key not in self.policy.unpinned_executors)
+        self.assertTrue(key not in self.policy.unpinned_cpu_executors)
         self.assertTrue(key in self.policy.function_locations[function_name])
         self.assertTrue(key in self.policy.backoff)
 
@@ -168,7 +168,7 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         self.policy.process_status(status)
 
         self.assertEqual(len(self.policy.function_locations[function_name]), 0)
-        self.assertTrue(key in self.policy.unpinned_executors)
+        self.assertTrue(key in self.policy.unpinned_cpu_executors)
 
     def test_process_status_not_running(self):
         '''
@@ -202,7 +202,7 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         self.policy.process_status(status)
 
         self.assertTrue(key not in self.policy.thread_statuses)
-        self.assertTrue(key not in self.policy.unpinned_executors)
+        self.assertTrue(key not in self.policy.unpinned_cpu_executors)
         self.assertEqual(len(self.policy.function_locations[function_name]), 0)
 
     def test_metadata_update(self):

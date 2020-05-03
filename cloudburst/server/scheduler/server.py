@@ -130,14 +130,15 @@ def scheduler(ip, mgmt_ip, route_addr):
     continuation_socket.bind(sutils.BIND_ADDR_TEMPLATE %
                              (sutils.CONTINUATION_PORT))
 
-    management_request_socket = context.socket(zmq.REQ)
-    management_request_socket.setsockopt(zmq.RCVTIMEO, 500)
-    # By setting this flag, zmq matches replies with requests.
-    management_request_socket.setsockopt(zmq.REQ_CORRELATE, 1)
-    # Relax strict alternation between request and reply.
-    # For detailed explanation, see here: http://api.zeromq.org/4-1:zmq-setsockopt
-    management_request_socket.setsockopt(zmq.REQ_RELAXED, 1)
-    management_request_socket.connect(sched_utils.get_scheduler_list_address(mgmt_ip))
+    if not local:
+        management_request_socket = context.socket(zmq.REQ)
+        management_request_socket.setsockopt(zmq.RCVTIMEO, 500)
+        # By setting this flag, zmq matches replies with requests.
+        management_request_socket.setsockopt(zmq.REQ_CORRELATE, 1)
+        # Relax strict alternation between request and reply.
+        # For detailed explanation, see here: http://api.zeromq.org/4-1:zmq-setsockopt
+        management_request_socket.setsockopt(zmq.REQ_RELAXED, 1)
+        management_request_socket.connect(sched_utils.get_scheduler_list_address(mgmt_ip))
 
     pusher_cache = SocketCache(context, zmq.PUSH)
 
@@ -278,16 +279,12 @@ def scheduler(ip, mgmt_ip, route_addr):
             # If the management IP is None, that means we arre running in
             # local mode, so there is no need to deal with caches and other
             # schedulers.
-            if mgmt_ip:
+            if not local:
                 latest_schedulers = sched_utils.get_ip_set(management_request_socket, False)
                 if latest_schedulers:
                     schedulers = latest_schedulers
 
         if end - start > REPORT_THRESHOLD:
-            num_unique_executors = policy.get_unique_executors()
-            key = scheduler_id + ':' + str(time.time())
-            data = {'key': key, 'count': num_unique_executors}
-
             status = SchedulerStatus()
             for name in dags.keys():
                 status.dags.append(name)

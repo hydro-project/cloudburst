@@ -19,7 +19,10 @@ import time
 import zmq
 
 from cloudburst.shared.proto.cloudburst_pb2 import GenericResponse
-from cloudburst.shared.proto.internal_pb2 import PinFunction
+from cloudburst.shared.proto.internal_pb2 import (
+    CPU, GPU, # Cloudburst's executor types
+    PinFunction
+)
 from cloudburst.shared.proto.shared_pb2 import StringSet
 from cloudburst.server.scheduler.policy.base_policy import (
     BaseCloudburstSchedulerPolicy
@@ -61,7 +64,13 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         self.key_locations = {}
 
         # Executors which currently have no functions pinned on them.
-        self.unpinned_executors = set()
+        self.unpinned_cpu_executors = set()
+
+        # The subset of all executors that have access to GPUs and are
+        # currently unallocated.
+        # NOTE: We currently only support GPU executors # as a part of DAG
+        # requests.
+        self.unpinned_gpu_executors = set()
 
         # A map from function names to the executor(s) on which they are
         # pinned.
@@ -78,15 +87,8 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         # rather than by policy.
         self.random_threshold = random_threshold
 
-        self.unique_executors = set()
-
         # Indicates if we are running in local mode
         self.local = local
-
-    def get_unique_executors(self):
-        count = len(self.unique_executors)
-        self.unique_executors = set()
-        return count
 
     def pick_executor(self, references, function_name=None):
         # Construct a map which maps from IP addresses to the number of
@@ -97,7 +99,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         if function_name:
             executors = set(self.function_locations[function_name])
         else:
-            executors = set(self.unpinned_executors)
+            executors = set(self.unpinned_cpu_executors)
 
         for executor in self.backoff:
             executors.discard(executor)
@@ -157,9 +159,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         # Remove this IP/tid pair from the system's metadata until it notifies
         # us that it is available again, but only do this for non-DAG requests.
         if not self.local and not function_name:
-            self.unpinned_executors.discard(max_ip)
-
-        self.unique_executors.add(max_ip)
+            self.unpinned_cpu_executors.discard(max_ip)
 
         if not max_ip:
             logging.error('No available executors.')
@@ -169,7 +169,9 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
     def pin_function(self, dag_name, function_ref):
         # If there are no functions left to choose from, then we return None,
         # indicating that we ran out of resources to use.
-        if len(self.unpinned_executors) == 0:
+        if function_ref.gpu and len(self.unpinned_gpu_executors) == 0:
+            return False
+        elif not function_ref.gpu and len(self.unpinned_cpu_executors) == 0:
             return False
 
         if dag_name not in self.pending_dags:
@@ -177,7 +179,12 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
         # Make a copy of the set of executors, so that we don't modify the
         # system's metadata.
-        candidates = set(self.unpinned_executors)
+        if function_ref.gpu:
+            candidates = set(self.unpinned_gpu_executors)
+        else:
+            # If this is not a GPU function, just look at all of the unpinned
+            # executors.
+            candidates = set(self.unpinned_cpu_executors)
 
         # Construct a PinFunction message to be sent to executors.
         pin_msg = PinFunction()
@@ -204,11 +211,15 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
             # Do not use this executor either way: If it rejected, it has
             # something else pinned, and if it accepted, it has pinned what we
-            # just asked it to pin.
-            # In local model allow executors to have multiple functions pinned
+            # just asked it to pin. In local mode, however we allow executors
+            # to have multiple functions pinned.
             if not self.local:
-                self.unpinned_executors.discard((node, tid))
-                candidates.discard((node, tid))
+                if function_ref.gpu:
+                    self.unpinned_gpu_executors.discard((node, tid))
+                    candidates.discard((node, tid))
+                else:
+                    self.unpinned_cpu_executors.discard((node, tid))
+                    candidates.discard((node, tid))
 
             if response.success:
                 # The pin operation succeeded, so we return the node and thread
@@ -268,11 +279,18 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
                 del self.thread_statuses[key]
 
-            self.unpinned_executors.discard(key)
+            if status.type == CPU:
+                self.unpinned_cpu_executors.discard(key)
+            else:
+                self.unpinned_gpu_executors.discard(key)
+
             return
 
         if len(status.functions) == 0:
-            self.unpinned_executors.add(key)
+            if status.type == CPU:
+                self.unpinned_cpu_executors.add(key)
+            else:
+                self.unpinned_gpu_executors.add(key)
 
         # Remove all the old function locations, and all the new ones -- there
         # will probably be a large overlap, but this shouldn't be much

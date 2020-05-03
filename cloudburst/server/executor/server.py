@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import logging
+import os
 import sys
 import time
 
@@ -32,6 +33,7 @@ from cloudburst.shared.proto.cloudburst_pb2 import (
     MULTIEXEC # Cloudburst's execution types
 )
 from cloudburst.shared.proto.internal_pb2 import (
+    CPU, GPU, # Cloudburst's executor types
     ExecutorStatistics,
     ThreadStatus,
 )
@@ -42,6 +44,12 @@ REPORT_THRESH = 5
 def executor(ip, mgmt_ip, schedulers, thread_id):
     logging.basicConfig(filename='log_executor.txt', level=logging.INFO,
                         format='%(asctime)s %(message)s')
+
+    # Check what resources we have access to, set as an environment variable.
+    if os.getenv('EXECUTOR_TYPE', 'CPU') == 'GPU':
+        exec_type = GPU
+    else:
+        exec_type = CPU
 
     context = zmq.Context(1)
     poller = zmq.Poller()
@@ -95,6 +103,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     status.ip = ip
     status.tid = thread_id
     status.running = True
+    status.type = exec_type
     utils.push_status(schedulers, pusher_cache, status)
 
     departing = False
