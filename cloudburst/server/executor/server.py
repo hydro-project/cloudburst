@@ -197,62 +197,76 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         if dag_queue_socket in socks and socks[dag_queue_socket] == zmq.POLLIN:
             work_start = time.time()
 
-            schedule = DagSchedule()
-            schedule.ParseFromString(dag_queue_socket.recv())
-            fname = schedule.target_function
+            # In order to effectively support batching, we have to make sure we
+            # dequeue lots of schedules in addition to lots of triggers. Right
+            # now, we're not going to worry about supporting batching here,
+            # just on the trigger dequeue side, but we still have to dequeue
+            # all schedules we've received. We just process them one at a time.
+            while True:
+                schedule = DagSchedule()
+                try:
+                    msg = dag_queue_socket.recv(zmq.DONTWAIT)
+                except zmq.ZMQError as e:
+                    if e.errno == zmq.EAGAIN:
+                        break # There are no more messages.
+                    else:
+                        raise e # Unexpected error.
 
-            logging.info('Received a schedule for DAG %s (%s), function %s.' %
-                         (schedule.dag.name, schedule.id, fname))
+                schedule.ParseFromString(msg)
+                fname = schedule.target_function
 
-            if fname not in queue:
-                queue[fname] = {}
+                logging.info('Received a schedule for DAG %s (%s), function %s.' %
+                             (schedule.dag.name, schedule.id, fname))
 
-            queue[fname][schedule.id] = schedule
+                if fname not in queue:
+                    queue[fname] = {}
 
-            if (schedule.id, fname) not in receive_times:
-                receive_times[(schedule.id, fname)] = time.time()
+                queue[fname][schedule.id] = schedule
 
-            # In case we receive the trigger before we receive the schedule, we
-            # can trigger from this operation as well.
-            trkey = (schedule.id, fname)
-            fref = None
+                if (schedule.id, fname) not in receive_times:
+                    receive_times[(schedule.id, fname)] = time.time()
 
-            # Check to see what type of execution this function is.
-            for ref in schedule.dag.functions:
-                if ref.name == fname:
-                    fref = ref
+                # In case we receive the trigger before we receive the schedule, we
+                # can trigger from this operation as well.
+                trkey = (schedule.id, fname)
+                fref = None
 
-            if (trkey in received_triggers and
-                    ((len(received_triggers[trkey]) == len(schedule.triggers)) \
-                    or (fref.type == MULTIEXEC))):
+                # Check to see what type of execution this function is.
+                for ref in schedule.dag.functions:
+                    if ref.name == fname:
+                        fref = ref
 
-                triggers = list(received_triggers[trkey].values())
+                if (trkey in received_triggers and
+                        ((len(received_triggers[trkey]) == len(schedule.triggers))
+                         or (fref.type == MULTIEXEC))):
 
-                if fname not in function_cache:
-                    logging.error('%s not in function cache', fname)
-                    utils.generate_error_response(schedule, client, fname)
-                    continue
+                    triggers = list(received_triggers[trkey].values())
 
-                # We don't support actual batching for when we receive a
-                # schedule before a trigger, so everything is just a batch of
-                # size 1 if anything.
-                success = exec_dag_function(pusher_cache, client,
-                                            [triggers], function_cache[fname],
-                                            [schedule], user_library,
-                                            dag_runtimes, cache, schedulers,
-                                            batching)[0]
-                user_library.close()
+                    if fname not in function_cache:
+                        logging.error('%s not in function cache', fname)
+                        utils.generate_error_response(schedule, client, fname)
+                        continue
 
-                del received_triggers[trkey]
-                if success:
-                    del queue[fname][schedule.id]
+                    # We don't support actual batching for when we receive a
+                    # schedule before a trigger, so everything is just a batch of
+                    # size 1 if anything.
+                    success = exec_dag_function(pusher_cache, client,
+                                                [triggers], function_cache[fname],
+                                                [schedule], user_library,
+                                                dag_runtimes, cache, schedulers,
+                                                batching)[0]
+                    user_library.close()
 
-                    fend = time.time()
-                    fstart = receive_times[(schedule.id, fname)]
-                    runtimes[fname].append(fend - fstart)
-                    exec_counts[fname] += 1
+                    del received_triggers[trkey]
+                    if success:
+                        del queue[fname][schedule.id]
 
-                    finished_executions[(schedule.id, fname)] = time.time()
+                        fend = time.time()
+                        fstart = receive_times[(schedule.id, fname)]
+                        runtimes[fname].append(fend - fstart)
+                        exec_counts[fname] += 1
+
+                        finished_executions[(schedule.id, fname)] = time.time()
 
             elapsed = time.time() - work_start
             event_occupancy['dag_queue'] += elapsed
@@ -312,6 +326,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                 continue
 
             fref = None
+            schedule = queue[fname][list(trigger_keys)[0][0]] # Pick a random schedule to check.
             # Check to see what type of execution this function is.
             for ref in schedule.dag.functions:
                 if ref.name == fname:

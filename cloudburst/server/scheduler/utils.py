@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
 import zmq
 
 from anna.lattices import SetLattice
@@ -49,7 +50,8 @@ def put_func_list(client, funclist):
         result.add(bytes(val, 'utf-8'))
 
     lattice = SetLattice(result)
-    client.put(FUNCOBJ, lattice)
+    res = client.put(FUNCOBJ, lattice)
+    logging.info('kvs.put of list was %s' % (str(res)))
 
 
 def get_cache_ip_key(ip):

@@ -148,7 +148,7 @@ def _run_function(func, refs, args, user_lib):
                 if isinstance(val, CloudburstReference):
                     arg[idx] = refs[val.key]
 
-                func_args += (arg,)
+            func_args += (arg,)
 
     return func(*func_args)
 
@@ -287,6 +287,9 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
                               batching):
     fname = schedules[0].target_function
 
+    # We construct farg_sets to have a request by request set of arguments.
+    # That is, each element in farg_sets will have all the arguments for one
+    # invocation.
     farg_sets = []
     for schedule, trigger_set in zip(schedules, trigger_sets):
         fargs = list(schedule.arguments[fname].values)
@@ -299,8 +302,9 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
 
     if batching:
         fargs = [[]] * len(farg_sets[0])
-        for idx, farg_set in enumerate(farg_sets):
-            fargs[idx].append(farg_set[idx])
+        for farg_set in farg_sets:
+            for idx, val in enumerate(farg_set):
+                fargs[idx].append(val)
     else: # There will only be one thing in farg_sets
         fargs = farg_sets[0]
 
