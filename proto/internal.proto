@@ -124,4 +124,7 @@ message PinFunction {
 
   // The address to which the executor should accept or reject the pin request.
   string response_address = 2;
+
+  // Whethher or not this function supports batching.
+  bool batching = 3;
 }

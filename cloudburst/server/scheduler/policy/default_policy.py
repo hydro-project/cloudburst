@@ -189,6 +189,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         # Construct a PinFunction message to be sent to executors.
         pin_msg = PinFunction()
         pin_msg.name = function_ref.name
+        pin_msg.batching = function_ref.batching
         pin_msg.response_address = self.ip
 
         serialized = pin_msg.SerializeToString()

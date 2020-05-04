@@ -391,8 +391,8 @@ class TestExecutorCall(unittest.TestCase):
         dag = create_linear_dag([func], [fname], self.kvs_client, 'dag')
         schedule, triggers = self._create_fn_schedule(dag, arg, fname, [fname])
 
-        exec_dag_function(self.pusher_cache, self.kvs_client, triggers, func,
-                          schedule, self.user_library, {}, {}, [])
+        exec_dag_function(self.pusher_cache, self.kvs_client, [triggers], func,
+                          [schedule], self.user_library, {}, {}, [], False)
 
         # Assert that there have been 0 messages sent.
         self.assertEqual(len(self.socket.outbox), 0)
@@ -429,8 +429,8 @@ class TestExecutorCall(unittest.TestCase):
         kv.key = 'dependency'
         DEFAULT_VC.serialize(kv.vector_clock)
 
-        exec_dag_function(self.pusher_cache, self.kvs_client, triggers, func,
-                          schedule, self.user_library, {}, {}, [])
+        exec_dag_function(self.pusher_cache, self.kvs_client, [triggers], func,
+                          [schedule], self.user_library, {}, {}, [], False)
 
         # Assert that there have been 0 messages sent.
         self.assertEqual(len(self.socket.outbox), 0)
@@ -473,8 +473,8 @@ class TestExecutorCall(unittest.TestCase):
         schedule, triggers = self._create_fn_schedule(dag, arg, iname, [iname,
                                                                         sname])
 
-        exec_dag_function(self.pusher_cache, self.kvs_client, triggers, incr,
-                          schedule, self.user_library, {}, {}, [])
+        exec_dag_function(self.pusher_cache, self.kvs_client, [triggers], incr,
+                          [schedule], self.user_library, {}, {}, [], False)
 
         # Assert that there has been a message sent.
         self.assertEqual(len(self.pusher_cache.socket.outbox), 1)
@@ -511,8 +511,8 @@ class TestExecutorCall(unittest.TestCase):
         schedule, triggers = self._create_fn_schedule(dag, arg, iname,
                                                       [iname, sname], MULTI)
 
-        exec_dag_function(self.pusher_cache, self.kvs_client, triggers, incr,
-                          schedule, self.user_library, {}, {}, [])
+        exec_dag_function(self.pusher_cache, self.kvs_client, [triggers], incr,
+                          [schedule], self.user_library, {}, {}, [], False)
 
         # Assert that there has been a message sent.
         self.assertEqual(len(self.pusher_cache.socket.outbox), 1)
@@ -556,8 +556,8 @@ class TestExecutorCall(unittest.TestCase):
             dag, CloudburstReference(arg_name, True), iname, [iname, sname],
             MULTI)
 
-        exec_dag_function(self.pusher_cache, self.kvs_client, triggers, incr,
-                          schedule, self.user_library, {}, {}, [])
+        exec_dag_function(self.pusher_cache, self.kvs_client, [triggers], incr,
+                          [schedule], self.user_library, {}, {}, [], False)
 
         # Assert that there has been a message sent.
         self.assertEqual(len(self.pusher_cache.socket.outbox), 1)
@@ -610,10 +610,10 @@ class TestExecutorCall(unittest.TestCase):
                                                       [iname, sname])
 
         result = exec_dag_function(self.pusher_cache, self.kvs_client,
-                                   triggers, square, schedule,
-                                   self.user_library, {}, {}, [])
+                                   [triggers], square, [schedule],
+                                   self.user_library, {}, {}, [], False)
 
-        self.assertFalse(result)
+        self.assertFalse(result[0])
         data = self.kvs_client.get(schedule.id)
         self.assertEqual(data[schedule.id], None)
 
@@ -637,8 +637,8 @@ class TestExecutorCall(unittest.TestCase):
                                                       [iname, sname])
 
         result = exec_dag_function(self.pusher_cache, self.kvs_client,
-                                   triggers, square, schedule,
-                                   self.user_library, {}, {}, [])
+                                   [triggers], square, [schedule],
+                                   self.user_library, {}, {}, [], False)
 
         self.assertTrue(result)
         data = self.kvs_client.get(schedule.id)

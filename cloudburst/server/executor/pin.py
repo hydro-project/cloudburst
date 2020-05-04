@@ -21,7 +21,7 @@ from cloudburst.shared.proto.internal_pb2 import PinFunction
 
 
 def pin(pin_socket, pusher_cache, kvs, status, function_cache, runtimes,
-        exec_counts, user_library, local):
+        exec_counts, user_library, local, batching):
     serialized = pin_socket.recv()
     pin_msg = PinFunction()
     pin_msg.ParseFromString(serialized)
@@ -35,7 +35,7 @@ def pin(pin_socket, pusher_cache, kvs, status, function_cache, runtimes,
             or not status.running)):
         sutils.error.SerializeToString()
         sckt.send(sutils.error.SerializeToString())
-        return
+        return batching
 
     func = utils.retrieve_function(pin_msg.name, kvs, user_library)
 
@@ -54,8 +54,17 @@ def pin(pin_socket, pusher_cache, kvs, status, function_cache, runtimes,
     runtimes[name] = []
     exec_counts[name] = 0
     logging.info('Adding function %s to my local pinned functions.' % (name))
-    
+
+    if pin_msg.batching and len(status.functions) > 1:
+        raise RuntimeError('There is more than one pinned function (we are'
+                           + ' operating in local mode), and the function'
+                           + ' attempting to be pinned has batching enabled. This'
+                           + ' is not allowed -- you can only use batching in'
+                           + ' cluster mode or in local mode with one function.')
+
     sckt.send(sutils.ok_resp)
+
+    return pin_msg.batching
 
 
 def unpin(unpin_socket, status, function_cache, runtimes, exec_counts):
