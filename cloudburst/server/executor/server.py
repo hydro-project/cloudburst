@@ -305,7 +305,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             # Only execute the functions for which we have received a schedule.
             # Everything else will wait.
             for tid, fname in list(trigger_keys):
-                if tid not in queue[fname]:
+                if fname not in queue or tid not in queue[fname]:
                     trigger_keys.remove((tid, fname))
 
             if len(trigger_keys) == 0:
