@@ -49,7 +49,7 @@ def put_func_list(client, funclist):
         result.add(bytes(val, 'utf-8'))
 
     lattice = SetLattice(result)
-    res = client.put(FUNCOBJ, lattice)
+    client.put(FUNCOBJ, lattice)
 
 
 def get_cache_ip_key(ip):
