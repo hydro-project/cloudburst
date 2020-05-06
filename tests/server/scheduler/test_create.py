@@ -143,7 +143,7 @@ class TestSchedulerCreate(unittest.TestCase):
 
         # Add relevant metadata to the policy engine.
         address_set = {(self.ip, 1), (self.ip, 2)}
-        self.policy.unpinned_executors.update(address_set)
+        self.policy.unpinned_cpu_executors.update(address_set)
 
         # Prepopulate the pin_accept socket with sufficient success messages.
         self.pin_socket.inbox.append(sutils.ok_resp)
@@ -196,7 +196,7 @@ class TestSchedulerCreate(unittest.TestCase):
                             self.pusher_cache.addresses)
 
         # Test that the policy engine has the correct metadata stored.
-        self.assertEqual(len(self.policy.unpinned_executors), 0)
+        self.assertEqual(len(self.policy.unpinned_cpu_executors), 0)
         self.assertEqual(len(self.policy.pending_dags), 0)
         self.assertTrue(source in self.policy.function_locations)
         self.assertTrue(sink in self.policy.function_locations)
@@ -223,7 +223,7 @@ class TestSchedulerCreate(unittest.TestCase):
 
         # Add relevant metadata to the policy engine.
         address_set = {(self.ip, 1), (self.ip, 2)}
-        self.policy.unpinned_executors.update(address_set)
+        self.policy.unpinned_cpu_executors.update(address_set)
 
         # Attempt to create the DAG.
         call_frequency = {}
@@ -239,7 +239,7 @@ class TestSchedulerCreate(unittest.TestCase):
 
         # Check that no additional metadata was created or sent.
         self.assertEqual(len(self.pusher_cache.socket.outbox), 0)
-        self.assertEqual(len(self.policy.unpinned_executors), 2)
+        self.assertEqual(len(self.policy.unpinned_cpu_executors), 2)
         self.assertEqual(len(self.policy.function_locations), 0)
         self.assertEqual(len(self.policy.pending_dags), 0)
 
@@ -263,7 +263,7 @@ class TestSchedulerCreate(unittest.TestCase):
         # Add relevant metadata to the policy engine, but set the number of
         # executors to fewer than needed.
         address_set = {(self.ip, 1)}
-        self.policy.unpinned_executors.update(address_set)
+        self.policy.unpinned_cpu_executors.update(address_set)
 
         # Prepopulate the pin_accept socket with sufficient success messages.
         self.pin_socket.inbox.append(sutils.ok_resp)
@@ -300,7 +300,7 @@ class TestSchedulerCreate(unittest.TestCase):
         self.assertEqual(get_unpin_address(*address), addresses[1])
 
         # Check that no additional messages were sent.
-        self.assertEqual(len(self.policy.unpinned_executors), 0)
+        self.assertEqual(len(self.policy.unpinned_cpu_executors), 0)
         self.assertEqual(len(self.policy.function_locations), 0)
         self.assertEqual(len(self.policy.pending_dags), 0)
 
@@ -380,4 +380,104 @@ class TestSchedulerCreate(unittest.TestCase):
         # Check that no additional messages were sent and no metadata changed.
         self.assertEqual(len(self.pusher_cache.socket.outbox), 0)
         self.assertEqual(len(self.policy.function_locations), 0)
-        self.assertEqual(len(self.policy.unpinned_executors), 0)
+        self.assertEqual(len(self.policy.unpinned_cpu_executors), 0)
+
+    def test_create_gpu_dag_no_resources(self):
+        # Create a simple two-function DAG and add it to the inbound socket.
+        dag_name = 'dag'
+
+        dag = create_linear_dag([None], ['fn'], self.kvs_client,
+                                dag_name)
+        dag.functions[0].gpu = True
+        self.socket.inbox.append(dag.SerializeToString())
+
+        dags = {}
+        call_frequency = {}
+
+        create_dag(self.socket, self.pusher_cache, self.kvs_client, dags,
+                   self.policy, call_frequency)
+
+        # Check that an error was returned to the user.
+        self.assertEqual(len(self.socket.outbox), 1)
+        response = GenericResponse()
+        response.ParseFromString(self.socket.outbox[0])
+        self.assertFalse(response.success)
+        self.assertEqual(response.error, NO_RESOURCES)
+
+        # Test that the correct pin messages were sent.
+        self.assertEqual(len(self.pusher_cache.socket.outbox), 0)
+
+        # Check that no additional messages were sent.
+        self.assertEqual(len(self.policy.unpinned_cpu_executors), 0)
+        self.assertEqual(len(self.policy.function_locations), 0)
+        self.assertEqual(len(self.policy.pending_dags), 0)
+
+        # Check that no additional metadata was created or sent.
+        self.assertEqual(len(call_frequency), 0)
+        self.assertEqual(len(dags), 0)
+
+    def test_create_gpu_dag(self):
+        # Create a simple two-function DAG and add it to the inbound socket.
+        dag_name = 'dag'
+        fn = 'fn'
+
+        dag = create_linear_dag([None], [fn], self.kvs_client,
+                                dag_name)
+        dag.functions[0].gpu = True
+        self.socket.inbox.append(dag.SerializeToString())
+
+        dags = {}
+        call_frequency = {}
+
+        address_set = {(self.ip, 1)}
+        self.policy.unpinned_gpu_executors.update(address_set)
+
+        self.pin_socket.inbox.append(sutils.ok_resp)
+
+        create_dag(self.socket, self.pusher_cache, self.kvs_client, dags,
+                   self.policy, call_frequency)
+
+        # Test that the correct metadata was created.
+        self.assertTrue(dag_name in dags)
+        created, dag_source = dags[dag_name]
+        self.assertEqual(created, dag)
+        self.assertEqual(len(dag_source), 1)
+        self.assertEqual(list(dag_source)[0], fn)
+        self.assertTrue(fn in call_frequency)
+        self.assertEqual(call_frequency[fn], 0)
+
+        # Test that the DAG is stored in the KVS correctly.
+        result = self.kvs_client.get(dag_name)[dag_name]
+        created = Dag()
+        created.ParseFromString(result.reveal())
+        self.assertEqual(created, dag)
+
+        # Test that the correct response was returned to the user.
+        self.assertTrue(len(self.socket.outbox), 1)
+        response = GenericResponse()
+        response.ParseFromString(self.socket.outbox.pop())
+        self.assertTrue(response.success)
+
+        # Test that the correct pin messages were sent.
+        self.assertEqual(len(self.pusher_cache.socket.outbox), 1)
+        messages = self.pusher_cache.socket.outbox
+        function_set = {fn}
+        for message in messages:
+            pin_msg = PinFunction()
+            pin_msg.ParseFromString(message)
+            self.assertEqual(pin_msg.response_address, self.ip)
+            self.assertTrue(pin_msg.name in function_set)
+            function_set.discard(pin_msg.name)
+
+        self.assertEqual(len(function_set), 0)
+
+        for address in address_set:
+            self.assertTrue(get_pin_address(*address) in
+                            self.pusher_cache.addresses)
+
+        # Test that the policy engine has the correct metadata stored.
+        self.assertEqual(len(self.policy.unpinned_cpu_executors), 0)
+        self.assertEqual(len(self.policy.pending_dags), 0)
+        self.assertTrue(fn in self.policy.function_locations)
+
+        self.assertEqual(len(self.policy.function_locations[fn]), 1)

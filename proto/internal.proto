@@ -14,6 +14,17 @@
 
 syntax = "proto3";
 
+// An enum representing the types of resources this executor thread has access
+// to. Currently, we only support CPUs and GPUs.
+enum ExecutorType {
+  // The default ExecutorType for all threads, which says that this executor
+  // thread only has a CPU available.
+  CPU = 0;
+
+  // Indicates that this executor thread has access to a GPU.
+  GPU = 1;
+}
+
 // A status update sent from executors to schedulers, giving the schedulers
 // useful information about what resources are available in the system.
 message ThreadStatus {
@@ -34,6 +45,10 @@ message ThreadStatus {
   // executor is clearing its queues and leaving the system, and the schedulers
   // should no longer send it any work.
   bool running = 5;
+
+  // The type of resources this executor has access to (see ExecutorType
+  // definition for more details).
+  ExecutorType type = 6;
 }
 
 // A periodic reporting of the functions being executed by each executor, and
@@ -109,4 +124,7 @@ message PinFunction {
 
   // The address to which the executor should accept or reject the pin request.
   string response_address = 2;
+
+  // Whethher or not this function supports batching.
+  bool batching = 3;
 }

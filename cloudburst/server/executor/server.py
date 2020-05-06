@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import logging
+import os
 import sys
 import time
 
@@ -32,16 +33,24 @@ from cloudburst.shared.proto.cloudburst_pb2 import (
     MULTIEXEC # Cloudburst's execution types
 )
 from cloudburst.shared.proto.internal_pb2 import (
+    CPU, GPU, # Cloudburst's executor types
     ExecutorStatistics,
     ThreadStatus,
 )
 
 REPORT_THRESH = 5
+BATCH_SIZE_MAX = 20
 
 
 def executor(ip, mgmt_ip, schedulers, thread_id):
     logging.basicConfig(filename='log_executor.txt', level=logging.INFO,
                         format='%(asctime)s %(message)s')
+
+    # Check what resources we have access to, set as an environment variable.
+    if os.getenv('EXECUTOR_TYPE', 'CPU') == 'GPU':
+        exec_type = GPU
+    else:
+        exec_type = CPU
 
     context = zmq.Context(1)
     poller = zmq.Poller()
@@ -95,6 +104,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     status.ip = ip
     status.tid = thread_id
     status.running = True
+    status.type = exec_type
     utils.push_status(schedulers, pusher_cache, status)
 
     departing = False
@@ -134,6 +144,11 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # work.
     finished_executions = {}
 
+    # The set of pinned functions and whether they support batching. NOTE: This
+    # is only a set for local mode -- in cluster mode, there will only be one
+    # pinned function per executor.
+    batching = False
+
     # Internal metadata to track thread utilization.
     report_start = time.time()
     event_occupancy = {'pin': 0.0,
@@ -148,8 +163,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             work_start = time.time()
-            pin(pin_socket, pusher_cache, client, status, function_cache,
-                runtimes, exec_counts, user_library, local)
+            batching = pin(pin_socket, pusher_cache, client, status,
+                           function_cache, runtimes, exec_counts, user_library,
+                           local, batching)
             utils.push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -181,87 +197,38 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         if dag_queue_socket in socks and socks[dag_queue_socket] == zmq.POLLIN:
             work_start = time.time()
 
-            schedule = DagSchedule()
-            schedule.ParseFromString(dag_queue_socket.recv())
-            fname = schedule.target_function
+            # In order to effectively support batching, we have to make sure we
+            # dequeue lots of schedules in addition to lots of triggers. Right
+            # now, we're not going to worry about supporting batching here,
+            # just on the trigger dequeue side, but we still have to dequeue
+            # all schedules we've received. We just process them one at a time.
+            while True:
+                schedule = DagSchedule()
+                try:
+                    msg = dag_queue_socket.recv(zmq.DONTWAIT)
+                except zmq.ZMQError as e:
+                    if e.errno == zmq.EAGAIN:
+                        break # There are no more messages.
+                    else:
+                        raise e # Unexpected error.
 
-            logging.info('Received a schedule for DAG %s (%s), function %s.' %
-                         (schedule.dag.name, schedule.id, fname))
+                schedule.ParseFromString(msg)
+                fname = schedule.target_function
 
-            if fname not in queue:
-                queue[fname] = {}
+                logging.info('Received a schedule for DAG %s (%s), function %s.' %
+                             (schedule.dag.name, schedule.id, fname))
 
-            queue[fname][schedule.id] = schedule
+                if fname not in queue:
+                    queue[fname] = {}
 
-            if (schedule.id, fname) not in receive_times:
-                receive_times[(schedule.id, fname)] = time.time()
+                queue[fname][schedule.id] = schedule
 
-            # In case we receive the trigger before we receive the schedule, we
-            # can trigger from this operation as well.
-            trkey = (schedule.id, fname)
-            fref = None
+                if (schedule.id, fname) not in receive_times:
+                    receive_times[(schedule.id, fname)] = time.time()
 
-            # Check to see what type of execution this function is.
-            for ref in schedule.dag.functions:
-                if ref.name == fname:
-                    fref = ref
-
-            if (trkey in received_triggers and
-                    ((len(received_triggers[trkey]) == len(schedule.triggers)) \
-                    or (fref.type == MULTIEXEC))):
-
-                triggers = list(received_triggers[trkey].values())
-
-                if fname not in function_cache:
-                    logging.error('%s not in function cache', fname)
-                    utils.generate_error_response(schedule, client, fname)
-                    continue
-
-                success = exec_dag_function(pusher_cache, client,
-                                            triggers, function_cache[fname],
-                                            schedule, user_library,
-                                            dag_runtimes, cache, schedulers)
-                user_library.close()
-
-                del received_triggers[trkey]
-                if success:
-                    del queue[fname][schedule.id]
-
-                    fend = time.time()
-                    fstart = receive_times[(schedule.id, fname)]
-                    runtimes[fname].append(fend - fstart)
-                    exec_counts[fname] += 1
-
-                    finished_executions[(schedule.id, fname)] = time.time()
-
-            elapsed = time.time() - work_start
-            event_occupancy['dag_queue'] += elapsed
-            total_occupancy += elapsed
-
-        if dag_exec_socket in socks and socks[dag_exec_socket] == zmq.POLLIN:
-            work_start = time.time()
-            trigger = DagTrigger()
-            trigger.ParseFromString(dag_exec_socket.recv())
-
-            # We have received a repeated trigger for a function that has
-            # already finished executing.
-            if trigger.id in finished_executions:
-                continue
-
-            fname = trigger.target_function
-            logging.info('Received a trigger for schedule %s, function %s.' %
-                         (trigger.id, fname))
-
-            key = (trigger.id, fname)
-            if key not in received_triggers:
-                received_triggers[key] = {}
-
-            if (trigger.id, fname) not in receive_times:
-                receive_times[(trigger.id, fname)] = time.time()
-
-            received_triggers[key][trigger.source] = trigger
-            if fname in queue and trigger.id in queue[fname]:
-                schedule = queue[fname][trigger.id]
+                # In case we receive the trigger before we receive the schedule, we
+                # can trigger from this operation as well.
+                trkey = (schedule.id, fname)
                 fref = None
 
                 # Check to see what type of execution this function is.
@@ -269,6 +236,108 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                     if ref.name == fname:
                         fref = ref
 
+                if (trkey in received_triggers and
+                        ((len(received_triggers[trkey]) == len(schedule.triggers))
+                         or (fref.type == MULTIEXEC))):
+
+                    triggers = list(received_triggers[trkey].values())
+
+                    if fname not in function_cache:
+                        logging.error('%s not in function cache', fname)
+                        utils.generate_error_response(schedule, client, fname)
+                        continue
+
+                    # We don't support actual batching for when we receive a
+                    # schedule before a trigger, so everything is just a batch of
+                    # size 1 if anything.
+                    success = exec_dag_function(pusher_cache, client,
+                                                [triggers], function_cache[fname],
+                                                [schedule], user_library,
+                                                dag_runtimes, cache, schedulers,
+                                                batching)[0]
+                    user_library.close()
+
+                    del received_triggers[trkey]
+                    if success:
+                        del queue[fname][schedule.id]
+
+                        fend = time.time()
+                        fstart = receive_times[(schedule.id, fname)]
+                        runtimes[fname].append(fend - fstart)
+                        exec_counts[fname] += 1
+
+                        finished_executions[(schedule.id, fname)] = time.time()
+
+            elapsed = time.time() - work_start
+            event_occupancy['dag_queue'] += elapsed
+            total_occupancy += elapsed
+
+        if dag_exec_socket in socks and socks[dag_exec_socket] == zmq.POLLIN:
+            work_start = time.time()
+
+            # How many messages to dequeue -- BATCH_SIZE_MAX or 1 depending on
+            # the function configuration.
+            if batching:
+                count = BATCH_SIZE_MAX
+            else:
+                count = 1
+
+            trigger_keys = set()
+
+            for _ in range(count): # Dequeue count number of messages.
+                trigger = DagTrigger()
+
+                try:
+                    msg = dag_exec_socket.recv(zmq.DONTWAIT)
+                except zmq.ZMQError as e:
+                    if e.errno == zmq.EAGAIN: # There are no more messages.
+                        break
+                    else:
+                        raise e # Unexpected error.
+
+                trigger.ParseFromString(msg)
+
+                # We have received a repeated trigger for a function that has
+                # already finished executing.
+                if trigger.id in finished_executions:
+                    continue
+
+                fname = trigger.target_function
+                logging.info('Received a trigger for schedule %s, function %s.' %
+                             (trigger.id, fname))
+
+                key = (trigger.id, fname)
+                trigger_keys.add(key)
+                if key not in received_triggers:
+                    received_triggers[key] = {}
+
+                if (trigger.id, fname) not in receive_times:
+                    receive_times[(trigger.id, fname)] = time.time()
+
+                received_triggers[key][trigger.source] = trigger
+
+            # Only execute the functions for which we have received a schedule.
+            # Everything else will wait.
+            for tid, fname in list(trigger_keys):
+                if fname not in queue or tid not in queue[fname]:
+                    trigger_keys.remove((tid, fname))
+
+            if len(trigger_keys) == 0:
+                continue
+
+            fref = None
+            schedule = queue[fname][list(trigger_keys)[0][0]] # Pick a random schedule to check.
+            # Check to see what type of execution this function is.
+            for ref in schedule.dag.functions:
+                if ref.name == fname:
+                    fref = ref
+                    break
+
+            # Compile a list of all the trigger sets for which we have
+            # enough triggers.
+            trigger_sets = []
+            schedules = []
+            for key in trigger_keys:
                 if (len(received_triggers[key]) == len(schedule.triggers)) or \
                         fref.type == MULTIEXEC:
 
@@ -282,24 +351,33 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                         utils.generate_error_response(schedule, client, fname)
                         continue
 
-                    success = exec_dag_function(pusher_cache, client,
-                                                triggers,
-                                                function_cache[fname],
-                                                schedule, user_library,
-                                                dag_runtimes, cache,
-                                                schedulers)
-                    user_library.close()
-                    del received_triggers[key]
+                    trigger_sets.append(triggers)
+                    schedule = queue[fname][key[0]]
+                    schedules.append(schedule)
 
-                    if success:
-                        del queue[fname][trigger.id]
 
-                        fend = time.time()
-                        fstart = receive_times[(trigger.id, fname)]
-                        runtimes[fname].append(fend - fstart)
-                        exec_counts[fname] += 1
+            # Pass all of the trigger_sets into exec_dag_function at once.
+            # We also include the batching variaible to make sure we know
+            # whether to pass lists into the fn or not.
+            successes = exec_dag_function(pusher_cache, client,
+                                          trigger_sets,
+                                          function_cache[fname],
+                                          schedules, user_library,
+                                          dag_runtimes, cache,
+                                          schedulers, batching)
+            user_library.close()
+            del received_triggers[key]
 
-                        finished_executions[(schedule.id, fname)] = time.time()
+            for key, success in zip(trigger_keys, successes):
+                if success:
+                    del queue[fname][key[0]] # key[0] is trigger.id.
+
+                    fend = time.time()
+                    fstart = receive_times[key]
+                    runtimes[fname].append(fend - fstart)
+                    exec_counts[fname] += 1
+
+                    finished_executions[(schedule.id, fname)] = time.time()
 
             elapsed = time.time() - work_start
             event_occupancy['dag_exec'] += elapsed

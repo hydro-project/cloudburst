@@ -14,7 +14,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-IP=`ifconfig eth0 | grep 'inet addr:' | grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1 }'`
+IP=`ifconfig eth0 | grep 'inet' | grep -v inet6 | sed -e 's/^[ \t]*//' | cut -d' ' -f2`
 
 # A helper function that takes a space separated list and generates a string
 # that parses as a YAML list.
@@ -36,15 +36,16 @@ gen_yml_list() {
 cd $HYDRO_HOME/anna
 git remote remove origin
 git remote add origin https://github.com/$ANNA_REPO_ORG/anna
-while ! (git fetch -p origin)
-do
-  echo "git fetch failed, retrying"
+while !(git fetch -p origin); do
+   echo "git fetch failed, retrying..."
 done
+
 git checkout -b brnch origin/$ANNA_REPO_BRANCH
 git submodule sync
 git submodule update
 
-cd client/python && python3.6 setup.py install --prefix=$HOME/.local
+cd client/python
+python3.6 setup.py install
 
 cd $HYDRO_HOME/cloudburst
 if [[ -z "$REPO_ORG" ]]; then
@@ -57,16 +58,21 @@ fi
 
 git remote remove origin
 git remote add origin https://github.com/$REPO_ORG/cloudburst
-while ! (git fetch -p origin)
-do
-  echo "git fetch failed, retrying"
+while !(git fetch -p origin); do
+   echo "git fetch failed, retrying..."
 done
+
 git checkout -b brnch origin/$REPO_BRANCH
 git submodule sync
 git submodule update
 
 # Compile protobufs and run other installation procedures before starting.
 ./scripts/build.sh
+
+cd /flow
+git pull origin master
+python3.6 setup.py install
+cd $HYDRO_HOME/cloudburst
 
 touch conf/cloudburst-config.yml
 echo "ip: $IP" >> conf/cloudburst-config.yml

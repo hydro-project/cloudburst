@@ -65,7 +65,7 @@ class TestSchedulerCall(unittest.TestCase):
         status.ip = self.ip
         status.tid = 0
         self.executor_key = (status.ip, status.tid)
-        self.policy.unpinned_executors.add(self.executor_key)
+        self.policy.unpinned_cpu_executors.add(self.executor_key)
 
     '''
     INDIVIDUAL FUNCTION CALL TESTS
@@ -118,7 +118,7 @@ class TestSchedulerCall(unittest.TestCase):
         # Add a new executor for which we will construct cached references.
         ip_address = '192.168.0.1'
         new_key = (ip_address, 2)
-        self.policy.unpinned_executors.add(new_key)
+        self.policy.unpinned_cpu_executors.add(new_key)
 
         # Create a new reference and add its metadata.
         ref_name = 'reference'
@@ -163,7 +163,7 @@ class TestSchedulerCall(unittest.TestCase):
         '''
         # Clear all executors from the system.
         self.policy.thread_statuses.clear()
-        self.policy.unpinned_executors.clear()
+        self.policy.unpinned_cpu_executors.clear()
 
         # Create a function call.
         call = FunctionCall()

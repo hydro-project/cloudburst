@@ -42,6 +42,7 @@ def generate_error_response(schedule, client, fname):
         result = serializer.dump_lattice(result, MultiKeyCausalLattice)
         client.causal_put(schedule.output_key, result)
 
+
 def retrieve_function(name, kvs, user_library, consistency=NORMAL):
     kvs_name = sutils.get_func_kvs_name(name)
 
