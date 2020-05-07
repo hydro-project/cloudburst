@@ -302,9 +302,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
 
     if batching:
         fargs = [[]] * len(farg_sets[0])
-        for farg_set in farg_sets:
-            for idx, val in enumerate(farg_set):
-                fargs[idx].append(val)
+        for idx in range(len(fargs)):
+            fargs[idx] = [fset[idx] for fset in farg_sets]
     else: # There will only be one thing in farg_sets
         fargs = farg_sets[0]
 
@@ -337,8 +336,9 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
                 sckt = pusher_cache.get(sutils.get_dag_trigger_address(dest_ip))
                 sckt.send(new_trigger.SerializeToString())
 
-        if is_sink:
-            if schedule.continuation.name:
+    if is_sink:
+        if schedule.continuation.name:
+            for schedule, result in zip(schedules, result_list):
                 cont = schedule.continuation
                 cont.id = schedule.id
                 cont.result = serializer.dump(result)
@@ -347,19 +347,26 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
                              (schedule.id))
                 sckt = pusher_cache.get(utils.get_continuation_address(schedulers))
                 sckt.send(cont.SerializeToString())
-            elif schedule.response_address:
+        elif schedule.response_address:
+            for schedule, result in zip(schedules, result_list):
                 sckt = pusher_cache.get(schedule.response_address)
                 logging.info('DAG %s (ID %s) result returned to requester.' %
                              (schedule.dag.name, trigger.id))
                 sckt.send(serializer.dump(result))
 
-            else:
+        else:
+            keys = []
+            lattices = []
+            for schedule, result in zip(schedules, result_list):
                 lattice = serializer.dump_lattice(result)
                 output_key = schedule.output_key if schedule.output_key \
                     else schedule.id
                 logging.info('DAG %s (ID %s) result in KVS at %s.' %
-                             (schedule.dag.name, trigger.id, output_key))
-                kvs.put(output_key, lattice)
+                             (schedule.dag.name, schedule.id, output_key))
+
+                keys.append(output_key)
+                lattices.append(lattice)
+            kvs.put(keys, lattices)
 
     return is_sink, successes
 

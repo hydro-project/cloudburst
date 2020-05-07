@@ -105,6 +105,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         else:
             executors = set(self.unpinned_cpu_executors)
 
+        logging.info(f'Starting off with {len(executors)} choices...')
         # First priority is scheduling things on the same node if possible.
         # Otherwise, continue on with the regular policy.
         if len(colocated) > 0:
@@ -118,20 +119,23 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                 if ip in candidate_nodes:
                     return ip, tid
 
-        for executor in self.backoff:
-            executors.discard(executor)
+        # for executor in self.backoff:
+        #     if len(executors) > 1:
+        #         logging.info(f'Length is {len(executors)}; discarding for'
+        #                      + ' backoff')
+        #         executors.discard(executor)
 
         # Generate a list of all the keys in the system; if any of these nodes
         # have received many requests, we remove them from the executor set
         # with high probability.
-        for key in self.running_counts:
-            if (len(self.running_counts[key]) > 1000 and sys_random.random() >
-                    self.random_threshold):
-                executors.discard(key)
+        # for key in self.running_counts:
+        #    if (len(self.running_counts[key]) > 1000 and sys_random.random() >
+        #            self.random_threshold):
+        #         if len(executors) > 1:
+        #             executors.discard(key)
 
-        if len(executors) == 0:
-            logging.error('No available executors.')
-            return None
+        # if len(executors) == 0:
+        #     return None
 
         executor_ips = set([e[0] for e in executors])
 
@@ -166,6 +170,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         # anywhere), or with some random chance, we assign this node to a
         # random executor.
         if not max_ip or sys_random.random() < self.random_threshold:
+            logging.info('Picking a random executor...')
             max_ip = sys_random.sample(executors, 1)[0]
 
         if max_ip not in self.running_counts:
@@ -179,7 +184,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             self.unpinned_cpu_executors.discard(max_ip)
 
         if not max_ip:
-            logging.error('No available executors.')
+            logging.error('No available executors because I reached the end.')
 
         return max_ip
 
@@ -247,6 +252,13 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             # Pick a random executor from the set of candidates and attempt to
             # pin this function there.
             node, tid = sys_random.sample(candidates, 1)[0]
+
+            for other in self.pending_dags[dag_name]:
+                _, thread = other
+                other_node, _ = other
+
+                if len(candidates) > 1 and node == other_node:
+                    continue
 
             sckt = self.pusher_cache.get(get_pin_address(node, tid))
             sckt.send(serialized)

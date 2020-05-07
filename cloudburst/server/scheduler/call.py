@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
 import time
 import uuid
 
@@ -93,8 +94,18 @@ def call_dag(call, pusher_cache, dags, policy, request_id=None):
     for fref in dag.functions:
         args = call.function_args[fref.name].values
 
+        processed = list(map(lambda arg: serializer.load(arg), args))
+        flattened = tuple()
+        # Unnest arguments.
+        for arg in processed:
+            if type(arg) == tuple:
+                flattened += arg
+            else:
+                flattened += (arg,)
+        processed = flattened
+
         refs = list(filter(lambda arg: type(arg) == CloudburstReference,
-                           map(lambda arg: serializer.load(arg), args)))
+                           processed))
 
         colocated = []
         if fref.name in dag.colocated:
