@@ -92,6 +92,9 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         # Indicates if we are running in local mode
         self.local = local
 
+        # Tracks the last 5 executors to which I have assigned work.
+        self.last_five = {}
+
 
     def pick_executor(self, references, function_name=None, colocated=[],
                       schedule=None):
@@ -105,7 +108,10 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         else:
             executors = set(self.unpinned_cpu_executors)
 
-        logging.info(f'Starting off with {len(executors)} choices...')
+        if function_name:
+            logging.info('function_name is ' + str(function_name))
+            logging.info(str(self.function_locations[function_name]))
+
         # First priority is scheduling things on the same node if possible.
         # Otherwise, continue on with the regular policy.
         if len(colocated) > 0:
@@ -119,23 +125,26 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                 if ip in candidate_nodes:
                     return ip, tid
 
-        # for executor in self.backoff:
-        #     if len(executors) > 1:
-        #         logging.info(f'Length is {len(executors)}; discarding for'
-        #                      + ' backoff')
-        #         executors.discard(executor)
+        # if function_name and function_name in self.last_five:
+        #     for thread in self.last_five[function_name]:
+        #         if len(executors) == 1:
+        #             break
+        #         executors.discard(thread)
+
+        for executor in self.backoff:
+            if len(executors) > 1:
+                logging.info(f'Length is {len(executors)}; discarding for'
+                             + ' backoff')
+                executors.discard(executor)
 
         # Generate a list of all the keys in the system; if any of these nodes
         # have received many requests, we remove them from the executor set
         # with high probability.
-        # for key in self.running_counts:
-        #    if (len(self.running_counts[key]) > 1000 and sys_random.random() >
-        #            self.random_threshold):
-        #         if len(executors) > 1:
-        #             executors.discard(key)
-
-        # if len(executors) == 0:
-        #     return None
+        for key in self.running_counts:
+           if (len(self.running_counts[key]) > 1000 and sys_random.random() >
+                   self.random_threshold):
+                if len(executors) > 1:
+                    executors.discard(key)
 
         executor_ips = set([e[0] for e in executors])
 
@@ -184,7 +193,17 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             self.unpinned_cpu_executors.discard(max_ip)
 
         if not max_ip:
-            logging.error('No available executors because I reached the end.')
+            logging.error('No available executors.')
+
+        if function_name:
+            if function_name not in self.last_five:
+                self.last_five[function_name] = []
+
+            if len(self.last_five[function_name]) > 15:
+                self.last_five[function_name].pop()
+
+            if max_ip not in self.last_five[function_name]:
+                self.last_five[function_name].insert(0, max_ip)
 
         return max_ip
 
@@ -354,10 +373,18 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             return
 
         if len(status.functions) == 0:
-            if status.type == CPU:
-                self.unpinned_cpu_executors.add(key)
-            else:
-                self.unpinned_gpu_executors.add(key)
+            # Check to see if this message was sent before I asked it to pin
+            # something.
+            pinning = False
+            for fname in self.function_locations:
+                if key in self.function_locations[fname]:
+                    pinning = True
+
+            if not pinning:
+                if status.type == CPU:
+                    self.unpinned_cpu_executors.add(key)
+                else:
+                    self.unpinned_gpu_executors.add(key)
 
         # Remove all the old function locations, and all the new ones -- there
         # will probably be a large overlap, but this shouldn't be much
