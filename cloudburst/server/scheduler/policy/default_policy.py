@@ -108,10 +108,6 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         else:
             executors = set(self.unpinned_cpu_executors)
 
-        if function_name:
-            logging.info('function_name is ' + str(function_name))
-            logging.info(str(self.function_locations[function_name]))
-
         # First priority is scheduling things on the same node if possible.
         # Otherwise, continue on with the regular policy.
         if len(colocated) > 0:
@@ -131,28 +127,36 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         #             break
         #         executors.discard(thread)
 
-        for executor in self.backoff:
-            if len(executors) > 1:
-                logging.info(f'Length is {len(executors)}; discarding for'
-                             + ' backoff')
-                executors.discard(executor)
+        #for executor in self.backoff:
+        #    if len(executors) > 1:
+        #        executors.discard(executor)
 
-        # Generate a list of all the keys in the system; if any of these nodes
-        # have received many requests, we remove them from the executor set
-        # with high probability.
-        for key in self.running_counts:
-           if (len(self.running_counts[key]) > 1000 and sys_random.random() >
-                   self.random_threshold):
-                if len(executors) > 1:
-                    executors.discard(key)
+        ## Generate a list of all the keys in the system; if any of these nodes
+        ## have received many requests, we remove them from the executor set
+        ## with high probability.
+        #for key in self.running_counts:
+        #   if (len(self.running_counts[key]) > 1000 and sys_random.random() >
+        #           self.random_threshold):
+        #        if len(executors) > 1:
+        #            executors.discard(key)
+
+        # Round robin scheduling.
+        # if function_name:
+        #     return random.choice(self.function_locations[function_name])
+        if function_name:
+            executor = self.function_locations[function_name].pop(0)
+            self.function_locations[function_name].append(executor)
+            return executor
 
         executor_ips = set([e[0] for e in executors])
 
         # For each reference, we look at all the places where they are cached,
         # and we calculate which IP address has the most references cached.
+        logging.info(f'I have to optimize for {len(references)} refs')
         for reference in references:
             if reference.key in self.key_locations:
                 ips = self.key_locations[reference.key]
+                logging.info(f'Accessing {references[0].key} and found {len(ips)} choices')
 
                 for ip in ips:
                     # Only choose this cached node if its a valid executor for
@@ -178,9 +182,11 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         # If max_ip was never set (i.e. there were no references cached
         # anywhere), or with some random chance, we assign this node to a
         # random executor.
-        if not max_ip or sys_random.random() < self.random_threshold:
+        if not max_ip: # or sys_random.random() < self.random_threshold:
             logging.info('Picking a random executor...')
             max_ip = sys_random.sample(executors, 1)[0]
+        else:
+            logging.info(f'Picking based on locality: {max_ip}')
 
         if max_ip not in self.running_counts:
             self.running_counts[max_ip] = set()
@@ -323,9 +329,9 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
     def commit_dag(self, dag_name):
         for function_name, location in self.pending_dags[dag_name]:
             if function_name not in self.function_locations:
-                self.function_locations[function_name] = set()
+                self.function_locations[function_name] = []
 
-            self.function_locations[function_name].add(location)
+            self.function_locations[function_name].append(location)
 
         del self.pending_dags[dag_name]
 
@@ -361,7 +367,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         if not status.running:
             if key in self.thread_statuses:
                 for fname in self.thread_statuses[key].functions:
-                    self.function_locations[fname].discard(key)
+                    self.function_locations[fname].remove(key)
 
                 del self.thread_statuses[key]
 
@@ -389,17 +395,18 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         # Remove all the old function locations, and all the new ones -- there
         # will probably be a large overlap, but this shouldn't be much
         # different than calculating two different set differences anyway.
-        if key in self.thread_statuses and self.thread_statuses[key] != status:
-            for function_name in self.thread_statuses[key].functions:
-                if function_name in self.function_locations:
-                    self.function_locations[function_name].discard(key)
+        # if key in self.thread_statuses and self.thread_statuses[key] != status:
+        #     for function_name in self.thread_statuses[key].functions:
+        #         if function_name in self.function_locations:
+        #             self.function_locations[function_name].discard(key)
 
         self.thread_statuses[key] = status
         for function_name in status.functions:
             if function_name not in self.function_locations:
-                self.function_locations[function_name] = set()
+                self.function_locations[function_name] = list()
 
-            self.function_locations[function_name].add(key)
+            if key not in self.function_locations[function_name]:
+                self.function_locations[function_name].insert(0, key)
 
         # If the executor thread is overutilized, we add it to the backoff set
         # and ignore it for a period of time.
@@ -464,7 +471,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         for location in new_locations:
             function_name = location.name
             if function_name not in self.function_locations:
-                self.function_locations[function_name] = set()
+                self.function_locations[function_name] = []
 
             key = (location.ip, location.tid)
-            self.function_locations[function_name].add(key)
+            self.function_locations[function_name].append(key)

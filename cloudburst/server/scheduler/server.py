@@ -270,6 +270,9 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             call_dag(call, pusher_cache, dags, policy, continuation.id)
 
+            for fname in dag.functions:
+                call_frequency[fname.name] += 1
+
         end = time.time()
 
         if end - start > METADATA_THRESHOLD:

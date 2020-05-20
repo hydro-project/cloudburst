@@ -92,6 +92,8 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # local mode, so we use a regular AnnaTcpClient rather than an IPC client.
     if mgmt_ip:
         client = AnnaIpcClient(thread_id, context)
+        # client = AnnaTcpClient(os.getenv('ROUTE_ADDR'), ip, local=False,
+        #                        offset=thread_id)
         local = False
     else:
         client = AnnaTcpClient('127.0.0.1', '127.0.0.1', local=True, offset=1)
@@ -163,11 +165,9 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if pin_socket in socks and socks[pin_socket] == zmq.POLLIN:
             work_start = time.time()
-            print(f'before pin batching was {batching}')
             batching = pin(pin_socket, pusher_cache, client, status,
                            function_cache, runtimes, exec_counts, user_library,
                            local, batching)
-            print(f'after pin batching was {batching}')
             utils.push_status(schedulers, pusher_cache, status)
 
             elapsed = time.time() - work_start
@@ -321,22 +321,14 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             # Only execute the functions for which we have received a schedule.
             # Everything else will wait.
-            if fname in queue:
-                print('before queue:', 'fname in queue', fname in queue)
-                print('before keys', trigger_keys)
-            else:
-                print('FNAME NOT IN QUEUE')
             for tid, fname in list(trigger_keys):
                 if fname not in queue or tid not in queue[fname]:
-                    print('dropping %s' % (str((tid, fname))))
                     trigger_keys.remove((tid, fname))
 
             if len(trigger_keys) == 0:
                 continue
 
             fref = None
-            print('after queue keys', queue[fname].keys())
-            print('after keys', trigger_keys)
             schedule = queue[fname][list(trigger_keys)[0][0]] # Pick a random schedule to check.
             # Check to see what type of execution this function is.
             for ref in schedule.dag.functions:
@@ -371,7 +363,6 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             # We also include the batching variaible to make sure we know
             # whether to pass lists into the fn or not.
             if len(trigger_sets) > 0:
-                print(f'I am calling exec_df with  batching {batching}')
                 successes = exec_dag_function(pusher_cache, client,
                                               trigger_sets,
                                               function_cache[fname],
@@ -417,7 +408,10 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         # periodically report function occupancy
         report_end = time.time()
         if report_end - report_start > REPORT_THRESH:
-            cache.clear()
+            if len(cache) > 100:
+                extra_keys = list(cache.keys())[:len(cache) - 100]
+                for key in extra_keys:
+                    del cache[key]
 
             utilization = total_occupancy / (report_end - report_start)
             status.utilization = utilization

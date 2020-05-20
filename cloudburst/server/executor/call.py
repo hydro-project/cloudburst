@@ -98,7 +98,6 @@ def _exec_func_normal(kvs, func, args, user_lib, cache):
     args = processed
 
     if all([type(arg) == list for arg in args]): # A batching request.
-        print('In exec func normal, I detected batching.')
         refs = []
 
         # For a batching request, we pull out the references in each sublist of
@@ -111,10 +110,12 @@ def _exec_func_normal(kvs, func, args, user_lib, cache):
         # For non-batching requests, we just filter all of the arguments.
         refs = list(filter(lambda a: isinstance(a, CloudburstReference), args))
 
+    original_refs = refs
+    start = time.time()
     if refs:
         refs = _resolve_ref_normal(refs, kvs, cache)
+    end = time.time()
 
-    print(f'Calling with {args}')
     return _run_function(func, refs, args, user_lib)
 
 
@@ -139,13 +140,11 @@ def _run_function(func, refs, args, user_lib):
         # The standard non-batching approach to resolving references. We simply
         # take the KV-pairs and swap in the actual values for the references.
         if type(arg) != list:
-            print(f"we are not in batching mode I got {args}")
             if isinstance(arg, CloudburstReference):
                 func_args += (refs[arg.key],)
             else:
                 func_args += (arg,)
         else:
-            print("We are in the batching mode, we should be here...")
             # The batching approach: We look at each value to check if it's a
             # ref then append the whole list to the argument set.
             for idx, val in enumerate(arg):
@@ -154,7 +153,6 @@ def _run_function(func, refs, args, user_lib):
 
             func_args += (arg,)
 
-    print(f"I'm about to call the function args are {func_args}")
     return func(*func_args)
 
 
@@ -306,20 +304,16 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
         farg_sets.append(fargs)
 
     if batching:
-        print('Batching is true...')
         fargs = [[]] * len(farg_sets[0])
         for idx in range(len(fargs)):
             fargs[idx] = [fset[idx] for fset in farg_sets]
-        print(f'I generated {fargs}')
     else: # There will only be one thing in farg_sets
-        print('Batching is false??')
         fargs = farg_sets[0]
 
     result_list = _exec_func_normal(kvs, function, fargs, user_lib, cache)
     if not isinstance(result_list, list):
         result_list = [result_list]
 
-    logging.info(f'Results is: {result_list}')
     successes = []
     is_sink = True
 
@@ -342,7 +336,6 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
                 new_trigger.target_function = conn.sink
 
                 dest_ip = schedule.locations[conn.sink]
-                logging.info(f'{schedule.id}: sending trigger to {conn.sink} ({dest_ip})')
                 sckt = pusher_cache.get(sutils.get_dag_trigger_address(dest_ip))
                 sckt.send(new_trigger.SerializeToString())
 
@@ -363,7 +356,6 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
                 logging.info('DAG %s (ID %s) result returned to requester.' %
                              (schedule.dag.name, trigger.id))
                 sckt.send(serializer.dump(result))
-
         else:
             keys = []
             lattices = []

@@ -77,6 +77,11 @@ def create_dag(dag_create_socket, pusher_cache, kvs, dags, policy,
     kvs.put(dag.name, payload)
 
     for fref in dag.functions:
+        if 'gpu' in fref.name:
+            num_replicas = 1
+        else:
+            num_replicas = 1
+
         for _ in range(num_replicas):
             colocated = []
 
