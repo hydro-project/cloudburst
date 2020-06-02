@@ -28,15 +28,12 @@ def pin(pin_socket, pusher_cache, kvs, status, function_cache, runtimes,
 
     sckt = pusher_cache.get(sutils.get_pin_accept_port(pin_msg.response_address))
     name = pin_msg.name
-    print(f'pinning {name} with batching {pin_msg.batching}')
-    print(f'response address is {pin_msg.response_address}')
 
     # We currently only allow one pinned function per container in non-local
     # mode.
     if not local:
         if (len(function_cache) > 0 and name not in function_cache):
             sutils.error.SerializeToString()
-            logging.info(str(sutils.error))
             sckt.send(sutils.error.SerializeToString())
             return batching
 

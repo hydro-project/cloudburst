@@ -41,9 +41,13 @@ NUM_EXECUTOR_THREADS = 3
 class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
     def __init__(self, pin_accept_socket, pusher_cache, kvs_client, ip,
-                 random_threshold=0.20, local=False):
+                 policy, random_threshold=0.20, local=False):
         # This scheduler's IP address.
         self.ip = ip
+
+        # The policy to use with the scheduler -- random, round-robin, or
+        # locality.
+        self.policy = policy
 
         # A socket to listen for confirmations of pin operations' successes.
         self.pin_accept_socket = pin_accept_socket
@@ -92,9 +96,6 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         # Indicates if we are running in local mode
         self.local = local
 
-        # Tracks the last 5 executors to which I have assigned work.
-        self.last_five = {}
-
 
     def pick_executor(self, references, function_name=None, colocated=[],
                       schedule=None):
@@ -121,42 +122,37 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                 if ip in candidate_nodes:
                     return ip, tid
 
-        # if function_name and function_name in self.last_five:
-        #     for thread in self.last_five[function_name]:
-        #         if len(executors) == 1:
-        #             break
-        #         executors.discard(thread)
+        for executor in self.backoff:
+            if len(executors) > 1:
+                executors.discard(executor)
 
-        #for executor in self.backoff:
-        #    if len(executors) > 1:
-        #        executors.discard(executor)
-
-        ## Generate a list of all the keys in the system; if any of these nodes
-        ## have received many requests, we remove them from the executor set
-        ## with high probability.
-        #for key in self.running_counts:
-        #   if (len(self.running_counts[key]) > 1000 and sys_random.random() >
-        #           self.random_threshold):
-        #        if len(executors) > 1:
-        #            executors.discard(key)
-
-        # Round robin scheduling.
-        # if function_name:
-        #     return random.choice(self.function_locations[function_name])
+        # Shortcut policies -- if neither of these are activated, we go to the
+        # default backoff and locality policy.
         if function_name:
-            executor = self.function_locations[function_name].pop(0)
-            self.function_locations[function_name].append(executor)
-            return executor
+            if self.policy == 'random':
+                return random.choice(self.function_locations[function_name])
+            if self.policy == 'round-robin':
+                executor = self.function_locations[function_name].pop(0)
+                self.function_locations[function_name].append(executor)
+                return executor
+
+
+        # Generate a list of all the keys in the system; if any of these nodes
+        # have received many requests, we remove them from the executor set
+        # with high probability.
+        for key in self.running_counts:
+           if (len(self.running_counts[key]) > 1000 and sys_random.random() >
+                   self.random_threshold):
+                if len(executors) > 1:
+                    executors.discard(key)
 
         executor_ips = set([e[0] for e in executors])
 
         # For each reference, we look at all the places where they are cached,
         # and we calculate which IP address has the most references cached.
-        logging.info(f'I have to optimize for {len(references)} refs')
         for reference in references:
             if reference.key in self.key_locations:
                 ips = self.key_locations[reference.key]
-                logging.info(f'Accessing {references[0].key} and found {len(ips)} choices')
 
                 for ip in ips:
                     # Only choose this cached node if its a valid executor for
@@ -182,11 +178,8 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         # If max_ip was never set (i.e. there were no references cached
         # anywhere), or with some random chance, we assign this node to a
         # random executor.
-        if not max_ip: # or sys_random.random() < self.random_threshold:
-            logging.info('Picking a random executor...')
+        if not max_ip or sys_random.random() < self.random_threshold:
             max_ip = sys_random.sample(executors, 1)[0]
-        else:
-            logging.info(f'Picking based on locality: {max_ip}')
 
         if max_ip not in self.running_counts:
             self.running_counts[max_ip] = set()
@@ -200,16 +193,6 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
         if not max_ip:
             logging.error('No available executors.')
-
-        if function_name:
-            if function_name not in self.last_five:
-                self.last_five[function_name] = []
-
-            if len(self.last_five[function_name]) > 15:
-                self.last_five[function_name].pop()
-
-            if max_ip not in self.last_five[function_name]:
-                self.last_five[function_name].insert(0, max_ip)
 
         return max_ip
 
@@ -395,10 +378,10 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         # Remove all the old function locations, and all the new ones -- there
         # will probably be a large overlap, but this shouldn't be much
         # different than calculating two different set differences anyway.
-        # if key in self.thread_statuses and self.thread_statuses[key] != status:
-        #     for function_name in self.thread_statuses[key].functions:
-        #         if function_name in self.function_locations:
-        #             self.function_locations[function_name].discard(key)
+        if key in self.thread_statuses and self.thread_statuses[key] != status:
+            for function_name in self.thread_statuses[key].functions:
+                if function_name in self.function_locations:
+                    self.function_locations[function_name].discard(key)
 
         self.thread_statuses[key] = status
         for function_name in status.functions:

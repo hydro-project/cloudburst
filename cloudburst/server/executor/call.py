@@ -110,11 +110,8 @@ def _exec_func_normal(kvs, func, args, user_lib, cache):
         # For non-batching requests, we just filter all of the arguments.
         refs = list(filter(lambda a: isinstance(a, CloudburstReference), args))
 
-    original_refs = refs
-    start = time.time()
     if refs:
         refs = _resolve_ref_normal(refs, kvs, cache)
-    end = time.time()
 
     return _run_function(func, refs, args, user_lib)
 

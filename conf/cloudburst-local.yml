@@ -7,6 +7,7 @@ executor:
 scheduler:
   routing_address: 127.0.0.1
   metric_address: 127.0.0.1
+  policy: locality
 benchmark:
   cloudburst_address: 127.0.0.1
   thread_id: 0

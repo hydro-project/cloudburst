@@ -55,7 +55,7 @@ class Serializer():
         if val.type == DEFAULT:
             try:
                 return self._load_default(val.body)
-            except: # Unpicling error.
+            except: # Unpickling error.
                 return val.body
         elif val.type == STRING:
             return self._load_string(val.body)

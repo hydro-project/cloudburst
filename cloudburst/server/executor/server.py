@@ -92,8 +92,6 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
     # local mode, so we use a regular AnnaTcpClient rather than an IPC client.
     if mgmt_ip:
         client = AnnaIpcClient(thread_id, context)
-        # client = AnnaTcpClient(os.getenv('ROUTE_ADDR'), ip, local=False,
-        #                        offset=thread_id)
         local = False
     else:
         client = AnnaTcpClient('127.0.0.1', '127.0.0.1', local=True, offset=1)
@@ -271,7 +269,6 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                         finished_executions[(schedule.id, fname)] = time.time()
 
             elapsed = time.time() - work_start
-            logging.info(f'Request time was {elapsed}')
             event_occupancy['dag_queue'] += elapsed
             total_occupancy += elapsed
 
@@ -387,7 +384,6 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
                         finished_executions[(schedule.id, fname)] = time.time()
 
             elapsed = time.time() - work_start
-            logging.info(f'Request time was {elapsed}')
             event_occupancy['dag_exec'] += elapsed
             total_occupancy += elapsed
 
