@@ -28,6 +28,12 @@ protoc -I=common/proto --python_out=cloudburst/shared/proto cloudburst.proto sha
 protoc -I=common/proto --python_out=cloudburst/shared/proto anna.proto shared.proto causal.proto
 protoc -I=proto --python_out=cloudburst/shared/proto internal.proto
 
+cd ..
+git clone https://github.com/vsreekanti/aft
+python3 -m grpc_tools.protoc -I=aft/proto/aft --python_out=cloudburst/cloudburst/shared/proto --grpc_python_out=cloudburst/cloudburst/shared/proto aft.proto
+rm -rf aft
+cd cloudburst
+
 # NOTE: This is a hack. We have to do this because the protobufs are not
 # packaged properly (in the protobuf definitions). This isn't an issue for C++
 # builds, because all the header files are in one place, but it breaks our

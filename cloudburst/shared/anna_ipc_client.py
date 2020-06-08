@@ -17,6 +17,10 @@ import logging
 from anna.base_client import BaseAnnaClient
 import zmq
 
+from cloudburst.shared.proto.aft_pb2 import (
+    TransactionTag,
+    COMMITTED, ABORTED
+)
 from cloudburst.shared.proto.anna_pb2 import (
     NONE,  # The undefined lattice type
     NO_ERROR, KEY_DNE,  # Anna's error modes
@@ -32,9 +36,15 @@ from cloudburst.shared.proto.cloudburst_pb2 import (
 
 GET_REQUEST_ADDR = "ipc:///requests/get"
 PUT_REQUEST_ADDR = "ipc:///requests/put"
+START_TXN_ADDR = "ipc:///requests/start"
+COMMIT_TXN_ADDR = "ipc:///requests/commit"
+ABORT_TXN_ADDR = "ipc:///requests/abort"
 
 GET_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/get_%d"
 PUT_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/put_%d"
+COMMIT_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/commit_%d"
+ABORT_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/abort_%d"
+START_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/start_%d"
 
 
 class AnnaIpcClient(BaseAnnaClient):
@@ -46,12 +56,24 @@ class AnnaIpcClient(BaseAnnaClient):
 
         self.get_response_address = GET_RESPONSE_ADDR_TEMPLATE % thread_id
         self.put_response_address = PUT_RESPONSE_ADDR_TEMPLATE % thread_id
+        self.commit_response_address = COMMIT_RESPONSE_ADDR_TEMPLATE % thread_id
+        self.abort_response_address = ABORT_RESPONSE_ADDR_TEMPLATE % thread_id
+        self.start_response_address = START_RESPONSE_ADDR_TEMPLATE % thread_id
 
         self.get_request_socket = self.context.socket(zmq.PUSH)
         self.get_request_socket.connect(GET_REQUEST_ADDR)
 
         self.put_request_socket = self.context.socket(zmq.PUSH)
         self.put_request_socket.connect(PUT_REQUEST_ADDR)
+
+        self.commit_request_socket = self.context.socket(zmq.PUSH)
+        self.commit_request_socket.connect(COMMIT_REQUEST_ADDR)
+
+        self.abort_request_socket = self.context.socket(zmq.PUSH)
+        self.abort_request_socket.connect(ABORT_REQUEST_ADDR)
+
+        self.start_request_socket = self.context.socket(zmq.PUSH)
+        self.start_request_socket.connect(START_REQUEST_ADDR)
 
         self.get_response_socket = self.context.socket(zmq.PULL)
         self.get_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
@@ -61,11 +83,54 @@ class AnnaIpcClient(BaseAnnaClient):
         self.put_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.put_response_socket.bind(self.put_response_address)
 
+        self.start_response_socket = self.context.socket(zmq.PULL)
+        self.start_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
+        self.start_response_socket.bind(self.start_response_address)
+
+        self.commit_response_socket = self.context.socket(zmq.PULL)
+        self.commit_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
+        self.commit_response_socket.bind(self.commit_response_address)
+
+        self.abort_response_socket = self.context.socket(zmq.PULL)
+        self.abort_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
+        self.abort_response_socket.bind(self.abort_response_address)
+
         self.rid = 0
 
         # Set this to None because we do not use the address cache, but the
         # super class checks to see if there is one.
         self.address_cache = None
+
+    def start(self):
+        self.start_request_socket.send_string(self.start_response_address)
+        bts = self.start_response_socket.recv()
+
+        tag = TransactionTag()
+        tag.ParseFromString(bts)
+
+        return tag
+
+    def commit(self, tag):
+        msg = tag.id + ':' + self.commit_response_address
+        self.commit_request_socket.send_string(msg)
+
+        response = TransactionTag()
+        bts = self.commit_response_socket.recv()
+        response.ParseFromString(bts)
+
+        if response.status != COMMITTED:
+            raise RuntimeError(f"Unexpected transaction commit failure: {tag.id}")
+
+    def abort(self, tag):
+        msg = tag.id + ':' + self.abort_response_address
+        self.abort_request_socket.send_string(msg)
+
+        response = TransactionTag()
+        bts = self.abort_response_socket.recv()
+        response.ParseFromString(bts)
+
+        if response.status != ABORTED:
+            raise RuntimeError(f"Unexpected transaction abort failure: {tag.id}")
 
     def get(self, keys):
         if type(keys) != list:
