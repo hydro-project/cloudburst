@@ -37,13 +37,16 @@ def pin(pin_socket, pusher_cache, kvs, status, function_cache, runtimes,
         sckt.send(sutils.error.SerializeToString())
         return batching
 
-    func = utils.retrieve_function(pin_msg.name, kvs, user_library)
+    tag = kvs.start()
+    func = utils.retrieve_function(pin_msg.name, kvs, user_library,
+                                   txn_id=tag.id)
 
     # The function must exist -- because otherwise the DAG couldn't be
     # registered -- so we keep trying to retrieve it.
     while not func:
-        func = utils.retrieve_function(name, kvs, user_library)
+        func = utils.retrieve_function(name, kvs, user_library, txn_id=tag.id)
 
+    kvs.commit(tag)
     if name not in function_cache:
         function_cache[name] = func
 

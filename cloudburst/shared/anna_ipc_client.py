@@ -19,6 +19,8 @@ import zmq
 
 from cloudburst.shared.proto.aft_pb2 import (
     TransactionTag,
+    CommitRequest,
+    MetadataRequest,
     COMMITTED, ABORTED
 )
 from cloudburst.shared.proto.anna_pb2 import (
@@ -36,15 +38,17 @@ from cloudburst.shared.proto.cloudburst_pb2 import (
 
 GET_REQUEST_ADDR = "ipc:///requests/get"
 PUT_REQUEST_ADDR = "ipc:///requests/put"
-START_TXN_ADDR = "ipc:///requests/start"
-COMMIT_TXN_ADDR = "ipc:///requests/commit"
-ABORT_TXN_ADDR = "ipc:///requests/abort"
+START_REQUEST_ADDR = "ipc:///requests/start"
+COMMIT_REQUEST_ADDR = "ipc:///requests/commit"
+ABORT_REQUEST_ADDR = "ipc:///requests/abort"
+CONTINUE_ADDR = "ipc:///requests/continue"
 
 GET_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/get_%d"
 PUT_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/put_%d"
 COMMIT_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/commit_%d"
 ABORT_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/abort_%d"
 START_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/start_%d"
+CONTINUE_RESPONSE_ADDR_TEMPLATE = "ipc:///requests/continue_%d"
 
 
 class AnnaIpcClient(BaseAnnaClient):
@@ -59,6 +63,7 @@ class AnnaIpcClient(BaseAnnaClient):
         self.commit_response_address = COMMIT_RESPONSE_ADDR_TEMPLATE % thread_id
         self.abort_response_address = ABORT_RESPONSE_ADDR_TEMPLATE % thread_id
         self.start_response_address = START_RESPONSE_ADDR_TEMPLATE % thread_id
+        self.continue_response_address = CONTINUE_RESPONSE_ADDR_TEMPLATE % thread_id
 
         self.get_request_socket = self.context.socket(zmq.PUSH)
         self.get_request_socket.connect(GET_REQUEST_ADDR)
@@ -75,6 +80,9 @@ class AnnaIpcClient(BaseAnnaClient):
         self.start_request_socket = self.context.socket(zmq.PUSH)
         self.start_request_socket.connect(START_REQUEST_ADDR)
 
+        self.continue_request_socket = self.context.socket(zmq.PUSH)
+        self.continue_request_socket.connect(CONTINUE_ADDR)
+
         self.get_response_socket = self.context.socket(zmq.PULL)
         self.get_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.get_response_socket.bind(self.get_response_address)
@@ -84,16 +92,16 @@ class AnnaIpcClient(BaseAnnaClient):
         self.put_response_socket.bind(self.put_response_address)
 
         self.start_response_socket = self.context.socket(zmq.PULL)
-        self.start_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.start_response_socket.bind(self.start_response_address)
 
         self.commit_response_socket = self.context.socket(zmq.PULL)
-        self.commit_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.commit_response_socket.bind(self.commit_response_address)
 
         self.abort_response_socket = self.context.socket(zmq.PULL)
-        self.abort_response_socket.setsockopt(zmq.RCVTIMEO, 5000)
         self.abort_response_socket.bind(self.abort_response_address)
+
+        self.continue_response_socket = self.context.socket(zmq.PULL)
+        self.continue_response_socket.bind(self.continue_response_address)
 
         self.rid = 0
 
@@ -110,19 +118,50 @@ class AnnaIpcClient(BaseAnnaClient):
 
         return tag
 
-    def commit(self, tag):
-        msg = tag.id + ':' + self.commit_response_address
-        self.commit_request_socket.send_string(msg)
+    def continue_txn(self, tid, address, my_ip):
+        request = MetadataRequest()
+        request.tid = tid
+        request.address = address
+        request.responseAddress = self.continue_response_address
+
+        if address == my_ip:
+            return TransactionTag(id=tid)
+
+
+        self.continue_request_socket.send(request.SerializeToString())
+
+        self.continue_response_socket.recv_string()
+
+        return TransactionTag(id=tid)
+
+    def commit(self, tag, ip_address=None, schedule=None):
+        request = CommitRequest()
+        request.tid = tag.id
+        request.responseAddress = self.commit_response_address
+
+        if schedule is not None:
+            nodes = set()
+            for location in schedule.locations.keys():
+                location = schedule.locations[location]
+                node = location.split(':')[0] # Get only the IP address.
+                nodes.add(node)
+
+            for node in nodes:
+                if node != ip_address:
+                    request.addresses.append(node)
+
+        self.commit_request_socket.send(request.SerializeToString())
 
         response = TransactionTag()
         bts = self.commit_response_socket.recv()
         response.ParseFromString(bts)
 
         if response.status != COMMITTED:
+            print(response)
             raise RuntimeError(f"Unexpected transaction commit failure: {tag.id}")
 
     def abort(self, tag):
-        msg = tag.id + ':' + self.abort_response_address
+        msg = tag.id + '~' + self.abort_response_address
         self.abort_request_socket.send_string(msg)
 
         response = TransactionTag()
@@ -132,12 +171,18 @@ class AnnaIpcClient(BaseAnnaClient):
         if response.status != ABORTED:
             raise RuntimeError(f"Unexpected transaction abort failure: {tag.id}")
 
-    def get(self, keys):
+    def get(self, keys, txn_id=None):
         if type(keys) != list:
             keys = [keys]
 
         request, _ = self._prepare_data_request(keys)
         request.response_address = self.get_response_address
+
+        if txn_id is not None:
+            tp = request.tuples.add()
+            tp.key = 'TRANSACTION_ID'
+            tp.payload = bytes(txn_id, 'utf-8')
+
         self.get_request_socket.send(request.SerializeToString())
 
         kv_pairs = {}
@@ -215,13 +260,18 @@ class AnnaIpcClient(BaseAnnaClient):
             else:
                 return ((None, None), kv_pairs)
 
-    def put(self, key, value):
+    def put(self, key, value, txn_id=None):
         request, tuples = self._prepare_data_request([key])
 
         # We can assume this is tuples[0] because we only support one put
         # operation at a time.
         tup = tuples[0]
         tup.payload, tup.lattice_type = self._serialize(value)
+
+        if txn_id is not None:
+            tp = request.tuples.add()
+            tp.key = 'TRANSACTION_ID'
+            tp.payload = bytes(txn_id, 'utf-8')
 
         request.response_address = self.put_response_address
         self.put_request_socket.send(request.SerializeToString())

@@ -30,7 +30,7 @@ protoc -I=proto --python_out=cloudburst/shared/proto internal.proto
 
 cd ..
 git clone https://github.com/vsreekanti/aft
-python3 -m grpc_tools.protoc -I=aft/proto/aft --python_out=cloudburst/cloudburst/shared/proto --grpc_python_out=cloudburst/cloudburst/shared/proto aft.proto
+protoc -I=aft/proto/aft --python_out=cloudburst/cloudburst/shared/proto aft.proto
 rm -rf aft
 cd cloudburst
 

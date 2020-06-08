@@ -27,6 +27,7 @@ import pandas as pd
 import pyarrow as pa
 
 from cloudburst.server.utils import DEFAULT_VC, generate_timestamp
+from cloudburst.shared.proto.aft_pb2 import KeyValuePair
 from cloudburst.shared.proto.cloudburst_pb2 import (
     DEFAULT, NUMPY, STRING,  # Cloudburst's supported serializer types
     Value
@@ -43,6 +44,19 @@ class Serializer():
         # If the type of the input is bytes, then we need to deserialize the
         # input first.
         if type(data) == bytes:
+            # First check if this is an AFT value. If it is, we will
+            # deserialize it, and if it isn't the call to ParseFromString will
+            # fail, and we ignore it. Note that anything that comes out of an
+            # AFT KeyValuePair must have been in an LWWPairLattice by
+            # construction (AFT doesn't support anything else).
+            try:
+                val = KeyValuePair()
+                val.ParseFromString(data)
+                if len(val.value) > 0:
+                    data = val.value
+            except:
+                pass
+
             val = Value()
             val.ParseFromString(data)
         elif type(data).__name__ == Value.__name__:

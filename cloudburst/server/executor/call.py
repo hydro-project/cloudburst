@@ -46,10 +46,12 @@ def exec_function(exec_socket, kvs, user_library, cache, function_cache):
 
     fargs = [serializer.load(arg) for arg in call.arguments.values]
 
+    tag = kvs.start()
     if call.name in function_cache:
         f = function_cache[call.name]
     else:
-        f = utils.retrieve_function(call.name, kvs, user_library, call.consistency)
+        f = utils.retrieve_function(call.name, kvs, user_library,
+                                    call.consistency, txn_id=tag.id)
 
     if not f:
         logging.info('Function %s not found! Returning an error.' %
@@ -57,10 +59,12 @@ def exec_function(exec_socket, kvs, user_library, cache, function_cache):
         sutils.error.error = FUNC_NOT_FOUND
         result = ('ERROR', sutils.error.SerializeToString())
     else:
+        user_library.set_txn(tag)
         function_cache[call.name] = f
         try:
             if call.consistency == NORMAL:
-                result = _exec_func_normal(kvs, f, fargs, user_library, cache)
+                result = _exec_func_normal(kvs, f, fargs, user_library, cache,
+                                           tag)
                 logging.info('Finished executing %s: %s!' % (call.name,
                                                              str(result)))
             else:
@@ -75,7 +79,8 @@ def exec_function(exec_socket, kvs, user_library, cache, function_cache):
 
     if call.consistency == NORMAL:
         result = serializer.dump_lattice(result)
-        succeed = kvs.put(call.response_key, result)
+        succeed = kvs.put(call.response_key, result, txn_id=tag.id)
+        kvs.commit(tag)
     else:
         result = serializer.dump_lattice(result, MultiKeyCausalLattice,
                                          causal_dependencies=dependencies)
@@ -86,7 +91,7 @@ def exec_function(exec_socket, kvs, user_library, cache, function_cache):
                      + 'into the KVS.')
 
 
-def _exec_func_normal(kvs, func, args, user_lib, cache):
+def _exec_func_normal(kvs, func, args, user_lib, cache, txn_tag):
     # NOTE: We may not want to keep this permanently but need it for
     # continuations if the upstream function returns multiple things.
     processed = tuple()
@@ -111,7 +116,7 @@ def _exec_func_normal(kvs, func, args, user_lib, cache):
         refs = list(filter(lambda a: isinstance(a, CloudburstReference), args))
 
     if refs:
-        refs = _resolve_ref_normal(refs, kvs, cache)
+        refs = _resolve_ref_normal(refs, kvs, cache, txn_tag)
 
     return _run_function(func, refs, args, user_lib)
 
@@ -153,7 +158,7 @@ def _run_function(func, refs, args, user_lib):
     return func(*func_args)
 
 
-def _resolve_ref_normal(refs, kvs, cache):
+def _resolve_ref_normal(refs, kvs, cache, txn_tag):
     deserialize_map = {}
     kv_pairs = {}
     keys = set()
@@ -168,12 +173,12 @@ def _resolve_ref_normal(refs, kvs, cache):
     keys = list(keys)
 
     if len(keys) != 0:
-        returned_kv_pairs = kvs.get(keys)
+        returned_kv_pairs = kvs.get(keys, txn_id=tag.id)
 
         # When chaining function executions, we must wait, so we check to see
         # if certain values have not been resolved yet.
         while None in returned_kv_pairs.values():
-            returned_kv_pairs = kvs.get(keys)
+            returned_kv_pairs = kvs.get(keys, txn_id=tag.id)
 
         for key in keys:
             # Because references might be repeated, we check to make sure that
@@ -287,6 +292,26 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
                               batching):
     fname = schedules[0].target_function
 
+    assert len(trigger_sets) == 1, "We only support linear chains."
+    if trigger_sets[0][0].source == 'BEGIN': # First function in the chain
+        tag = kvs.start()
+    else:
+        # The transaction ID is the last value in the trigger.
+        trigger = trigger_sets[0][0]
+        schedule = schedules[0]
+
+        tid = serializer.load(trigger.arguments.values[-1])
+        trigger.arguments.values.remove(trigger.arguments.values[-1])
+
+        # Get the address of the upstream machine.
+        for location in schedule.locations:
+            if location == trigger.source:
+                node = schedule.locations[location].split(':')[0]
+                break
+
+        tag = kvs.continue_txn(tid, node, my_ip=user_lib.executor_ip)
+    user_lib.set_txn(tag)
+
     # We construct farg_sets to have a request by request set of arguments.
     # That is, each element in farg_sets will have all the arguments for one
     # invocation.
@@ -308,8 +333,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
     else: # There will only be one thing in farg_sets
         fargs = farg_sets[0]
 
-    result_list = _exec_func_normal(kvs, function, fargs, user_lib, cache)
-    if not isinstance(result_list, list):
+    result_list = _exec_func_normal(kvs, function, fargs, user_lib, cache, tag)
+    if not isinstance(result_list, list) or len(schedules) == 1:
         result_list = [result_list]
 
     successes = []
@@ -327,7 +352,11 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
                 continue
 
         successes.append(True)
+
         new_trigger = _construct_trigger(schedule.id, fname, result)
+        val_obj = new_trigger.arguments.values.add() # Append the TID as the last argument.
+        serializer.dump(tag.id, val_obj)
+
         for conn in schedule.dag.connections:
             if conn.source == fname:
                 is_sink = False
@@ -352,14 +381,15 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
                 logging.info('DAG %s (ID %s) result returned to requester.' %
                              (schedule.dag.name, trigger.id))
                 sckt.send(serializer.dump(result))
-
             else:
                 lattice = serializer.dump_lattice(result)
                 output_key = schedule.output_key if schedule.output_key \
                     else schedule.id
                 logging.info('DAG %s (ID %s) result in KVS at %s.' %
                              (schedule.dag.name, trigger.id, output_key))
-                kvs.put(output_key, lattice)
+                kvs.put(output_key, lattice, txn_id=tag.id)
+
+            kvs.commit(tag, ip_address=user_lib.executor_ip, schedule=schedule)
 
     return is_sink, successes
 

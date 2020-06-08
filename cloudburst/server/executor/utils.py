@@ -43,12 +43,13 @@ def generate_error_response(schedule, client, fname):
         client.causal_put(schedule.output_key, result)
 
 
-def retrieve_function(name, kvs, user_library, consistency=NORMAL):
+def retrieve_function(name, kvs, user_library, consistency=NORMAL,
+                      txn_id=None):
     kvs_name = sutils.get_func_kvs_name(name)
 
     if consistency == NORMAL:
         # This means that the function is stored in an LWWPairLattice.
-        lattice = kvs.get(kvs_name)[kvs_name]
+        lattice = kvs.get(kvs_name, txn_id=txn_id)[kvs_name]
         if lattice:
             result = serializer.load_lattice(lattice)
         else:

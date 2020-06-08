@@ -19,7 +19,7 @@ import yaml
 
 from cloudburst.shared.proto.cloudburst_pb2 import GenericResponse
 
-FUNC_PREFIX = 'funcs/'
+FUNC_PREFIX = 'funcs:'
 BIND_ADDR_TEMPLATE = 'tcp://*:%d'
 
 PIN_PORT = 4000

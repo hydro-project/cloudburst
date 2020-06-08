@@ -40,23 +40,25 @@ def create_function(func_create_socket, kvs, consistency=NORMAL):
     name = sutils.get_func_kvs_name(func.name)
     logging.info('Creating function %s.' % (name))
 
+    tag = kvs.start()
     if consistency == NORMAL:
         body = LWWPairLattice(sutils.generate_timestamp(0), func.body)
-        res = kvs.put(name, body)
+        res = kvs.put(name, body, txn_id=tag.id)
     else:
         skcl = SingleKeyCausalLattice(sutils.DEFAULT_VC,
                                       SetLattice({func.body}))
         kvs.put(name, skcl)
 
-    funcs = utils.get_func_list(kvs, '', fullname=True)
+    funcs = utils.get_func_list(kvs, '', tag.id, fullname=True)
     funcs.append(name)
-    utils.put_func_list(kvs, funcs)
+    utils.put_func_list(kvs, tag.id, funcs)
+    kvs.commit(tag)
 
     func_create_socket.send(sutils.ok_resp)
 
 
 def create_dag(dag_create_socket, pusher_cache, kvs, dags, policy,
-               call_frequency, num_replicas=1):
+               call_frequency, num_replicas=10):
     serialized = dag_create_socket.recv()
 
     dag = Dag()
@@ -74,7 +76,9 @@ def create_dag(dag_create_socket, pusher_cache, kvs, dags, policy,
     # We persist the DAG in the KVS, so other schedulers can read the DAG when
     # they hear about it.
     payload = LWWPairLattice(sutils.generate_timestamp(0), serialized)
-    kvs.put(dag.name, payload)
+    tag = kvs.start()
+    kvs.put(dag.name, payload, txn_id=tag.id)
+    kvs.commit(tag)
 
     for fref in dag.functions:
         for _ in range(num_replicas):

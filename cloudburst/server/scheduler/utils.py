@@ -12,14 +12,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from anna.lattices import LWWPairLattice, SetLattice
+import cloudpickle as cp
 import zmq
-
-from anna.lattices import SetLattice
 
 import cloudburst.server.utils as sutils
 from cloudburst.shared.proto.shared_pb2 import StringSet
 
-FUNCOBJ = 'funcs/index-allfuncs'
+FUNCOBJ = 'funcs:index-allfuncs'
 
 NUM_EXEC_THREADS = 3
 
@@ -27,14 +27,19 @@ EXECUTORS_PORT = 7002
 SCHEDULERS_PORT = 7004
 
 
-def get_func_list(client, prefix, fullname=False):
-    funcs = client.get(FUNCOBJ)[FUNCOBJ]
+def get_func_list(client, prefix, tid, fullname=False):
+    print('Calling get funcs list...')
+    funcs = client.get(FUNCOBJ, txn_id=tid)[FUNCOBJ]
     if not funcs:
         return []
 
+    print(funcs.reveal())
     prefix = sutils.FUNC_PREFIX + prefix
-    decoded = map(lambda v: str(v, 'utf-8'), funcs.reveal())
-    result = list(filter(lambda fn: fn.startswith(prefix), decoded))
+    # decoded = map(lambda v: str(v, 'utf-8'), funcs.reveal())
+    # result = list(filter(lambda fn: fn.startswith(prefix), decoded))
+    result = list(filter(lambda fn: fn.startswith(prefix),
+                         cp.loads(funcs.reveal())))
+
 
     if not fullname:
         result = list(map(lambda fn: fn.split(sutils.FUNC_PREFIX)[-1], result))
@@ -42,14 +47,17 @@ def get_func_list(client, prefix, fullname=False):
     return result
 
 
-def put_func_list(client, funclist):
+def put_func_list(client, tid, funclist):
     # Convert to a set in order to remove duplicates.
-    result = set()
-    for val in funclist:
-        result.add(bytes(val, 'utf-8'))
+    # result = set()
+    # for val in funclist:
+    #     result.add(bytes(val, 'utf-8'))
 
-    lattice = SetLattice(result)
-    client.put(FUNCOBJ, lattice)
+    # lattice = SetLattice(result)
+    # client.put(FUNCOBJ, lattice, txn_id=tid)
+
+    lattice = LWWPairLattice(0, cp.dumps(funclist))
+    client.put(FUNCOBJ, lattice, txn_id=tid)
 
 
 def get_cache_ip_key(ip):

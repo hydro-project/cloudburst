@@ -34,6 +34,7 @@ from cloudburst.server.scheduler.policy.default_policy import (
 )
 import cloudburst.server.scheduler.utils as sched_utils
 import cloudburst.server.utils as sutils
+from cloudburst.shared.anna_ipc_client import AnnaIpcClient
 from cloudburst.shared.proto.cloudburst_pb2 import (
     Continuation,
     Dag,
@@ -66,14 +67,14 @@ logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO,
 
 
 def scheduler(ip, mgmt_ip, route_addr):
-
-    # If the management IP is not set, we are running in local mode.
-    local = (mgmt_ip is None)
-    kvs = AnnaTcpClient(route_addr, ip, local=local)
-
     scheduler_id = str(uuid.uuid4())
 
     context = zmq.Context(1)
+
+    # If the management IP is not set, we are running in local mode.
+    local = (mgmt_ip is None)
+    # kvs = AnnaTcpClient(route_addr, ip, local=local)
+    kvs = AnnaIpcClient(0, context)
 
     # A mapping from a DAG's name to its protobuf representation.
     dags = {}
@@ -122,7 +123,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                              (sutils.SCHED_UPDATE_PORT))
 
     pin_accept_socket = context.socket(zmq.PULL)
-    pin_accept_socket.setsockopt(zmq.RCVTIMEO, 500)
+    pin_accept_socket.setsockopt(zmq.RCVTIMEO, 1000)
     pin_accept_socket.bind(sutils.BIND_ADDR_TEMPLATE %
                            (sutils.PIN_ACCEPT_PORT))
 
@@ -219,7 +220,9 @@ def scheduler(ip, mgmt_ip, route_addr):
             prefix = msg if msg else ''
 
             resp = StringSet()
-            resp.keys.extend(sched_utils.get_func_list(kvs, prefix))
+            tag = kvs.start()
+            resp.keys.extend(sched_utils.get_func_list(kvs, prefix, tag.id))
+            kvs.commit(tag)
 
             list_socket.send(resp.SerializeToString())
 
@@ -237,6 +240,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             # Retrieve any DAGs that some other scheduler knows about that we
             # do not yet know about.
+            tag = kvs.start()
             for dname in status.dags:
                 if dname not in dags:
                     payload = kvs.get(dname)
@@ -251,6 +255,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                         if fname.name not in call_frequency:
                             call_frequency[fname.name] = 0
 
+            kvs.commit(tag)
             policy.update_function_locations(status.function_locations)
 
         if continuation_socket in socks and socks[continuation_socket] == \

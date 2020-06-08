@@ -60,16 +60,28 @@ class CloudburstUserLibrary(AbstractCloudburstUserLibrary):
         self.recv_inbox_socket = context.socket(zmq.PULL)
         self.recv_inbox_socket.bind(self.address)
 
+        self.tid = None
+
+    def set_txn(self, tag):
+        self.tid = tag.id
+
     def put(self, ref, value):
-        return self.anna_client.put(ref, serializer.dump_lattice(value))
+        if self.tid == None:
+            raise RuntimeError("No transaction set for PUT.")
+
+        return self.anna_client.put(ref, serializer.dump_lattice(value),
+                                    txn_id=self.tid)
 
     def get(self, ref, deserialize=True):
+        if self.tid == None:
+            raise RuntimeError("No transaction set for GET.")
+
         if type(ref) != list:
             refs = [ref]
         else:
             refs = ref
 
-        kv_pairs = self.anna_client.get(refs)
+        kv_pairs = self.anna_client.get(refs, txn_id=self.tid)
         result = {}
 
         # Deserialize each of the lattice objects and return them to the

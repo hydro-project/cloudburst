@@ -118,19 +118,23 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                 if ip in candidate_nodes:
                     return ip, tid
 
-        for executor in self.backoff:
-            executors.discard(executor)
+        # for executor in self.backoff:
+        #     executors.discard(executor)
 
         # Generate a list of all the keys in the system; if any of these nodes
         # have received many requests, we remove them from the executor set
         # with high probability.
-        for key in self.running_counts:
-            if (len(self.running_counts[key]) > 1000 and sys_random.random() >
-                    self.random_threshold):
-                executors.discard(key)
+        # for key in self.running_counts:
+        #     if (len(self.running_counts[key]) > 1000 and sys_random.random() >
+        #             self.random_threshold):
+        #         executors.discard(key)
+        if function_name:
+            executor = self.function_locations[function_name].pop(0)
+            self.function_locations[function_name].append(executor)
+            return executor
 
         if len(executors) == 0:
-            logging.error('No available executors.')
+            logging.error('No available executors for %s.' % (function_name))
             return None
 
         executor_ips = set([e[0] for e in executors])
@@ -175,8 +179,8 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
         # Remove this IP/tid pair from the system's metadata until it notifies
         # us that it is available again, but only do this for non-DAG requests.
-        if not self.local and not function_name:
-            self.unpinned_cpu_executors.discard(max_ip)
+        # if not self.local and not function_name:
+        #     self.unpinned_cpu_executors.discard(max_ip)
 
         if not max_ip:
             logging.error('No available executors.')
@@ -255,8 +259,8 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             try:
                 response.ParseFromString(self.pin_accept_socket.recv())
             except zmq.ZMQError:
-                logging.error('Pin operation to %s:%d timed out. Retrying.' %
-                              (node, tid))
+                logging.error('Pin operation for %s to %s:%d timed out. Retrying.' %
+                              (function_ref.name, node, tid))
                 continue
 
             # Do not use this executor either way: If it rejected, it has
@@ -292,9 +296,9 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
     def commit_dag(self, dag_name):
         for function_name, location in self.pending_dags[dag_name]:
             if function_name not in self.function_locations:
-                self.function_locations[function_name] = set()
+                self.function_locations[function_name] = []
 
-            self.function_locations[function_name].add(location)
+            self.function_locations[function_name].append(location)
 
         del self.pending_dags[dag_name]
 
@@ -330,7 +334,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         if not status.running:
             if key in self.thread_statuses:
                 for fname in self.thread_statuses[key].functions:
-                    self.function_locations[fname].discard(key)
+                    self.function_locations[fname].remove(key)
 
                 del self.thread_statuses[key]
 
@@ -353,14 +357,14 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         if key in self.thread_statuses and self.thread_statuses[key] != status:
             for function_name in self.thread_statuses[key].functions:
                 if function_name in self.function_locations:
-                    self.function_locations[function_name].discard(key)
+                    self.function_locations[function_name].remove(key)
 
         self.thread_statuses[key] = status
         for function_name in status.functions:
             if function_name not in self.function_locations:
-                self.function_locations[function_name] = set()
+                self.function_locations[function_name] = []
 
-            self.function_locations[function_name].add(key)
+            self.function_locations[function_name].append(key)
 
         # If the executor thread is overutilized, we add it to the backoff set
         # and ignore it for a period of time.
@@ -401,12 +405,13 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
         # Update the sets of keys that are being cached at each IP address.
         self.key_locations.clear()
+        tag = self.kvs_client.start()
         for ip in executors:
             key = get_cache_ip_key(ip)
 
             # This is of type LWWPairLattice, which has a StringSet protobuf
             # packed into it; we want the keys in that StringSet protobuf.
-            lattice = self.kvs_client.get(key)[key]
+            lattice = self.kvs_client.get(key, txn_id=tag.id)[key]
             if lattice is None:
                 # We will only get None if this executor is still joining; if
                 # so, we just ignore this for now and move on.
@@ -420,6 +425,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                     self.key_locations[key] = []
 
                 self.key_locations[key].append(ip)
+        self.kvs_client.commit(tag)
 
     def update_function_locations(self, new_locations):
         for location in new_locations:
