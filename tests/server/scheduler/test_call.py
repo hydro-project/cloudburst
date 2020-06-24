@@ -56,9 +56,10 @@ class TestSchedulerCall(unittest.TestCase):
         self.ip = '127.0.0.1'
 
         self.policy = DefaultCloudburstSchedulerPolicy(self.pin_socket,
-                                                    self.pusher_cache,
-                                                    self.kvs_client, self.ip,
-                                                    random_threshold=0)
+                                                       self.pusher_cache,
+                                                       self.kvs_client, self.ip,
+                                                       policy='random',
+                                                       random_threshold=0)
 
         # Add an executor to the policy engine by default.
         status = ThreadStatus()
@@ -274,7 +275,7 @@ class TestSchedulerCall(unittest.TestCase):
         # Add the relevant metadata to the policy engine.
         source_address = (self.ip, 1)
         sink_address = (self.ip, 2)
-        self.policy.function_locations[source] = {source_address}
-        self.policy.function_locations[sink] = {sink_address}
+        self.policy.function_locations[source] = [source_address]
+        self.policy.function_locations[sink] = [sink_address]
 
         return dag, source_address, sink_address

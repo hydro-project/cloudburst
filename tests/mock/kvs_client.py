@@ -49,11 +49,16 @@ class MockAnnaClient(BaseAnnaClient):
 
         return result
 
-    def put(self, key, lattice):
-        if self.serialize:
-            lattice = self._serialize(lattice)
+    def put(self, keys, lattices):
+        if type(keys) != list:
+            keys = [keys]
+            lattices = [lattices]
 
-        self.kvs[key] = lattice
+        for key, lattice in zip(keys, lattices):
+            if self.serialize:
+                lattice = self._serialize(lattice)
+
+            self.kvs[key] = lattice
         return True
 
     def causal_get(self, keys, future_read_set=set(), key_version_locations={},
