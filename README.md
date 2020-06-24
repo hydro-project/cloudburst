@@ -23,9 +23,9 @@ The `CloudburstConnection` is the main client interface; when running in local m
 >>> from cloudburst.client.client import CloudburstConnection
 >>> local_cloud = CloudburstConnection('127.0.0.1', '127.0.0.1', local=True)
 >>> cloud_sq = local_cloud.register(lambda _, x: x * x, 'square')
->>> cloud_sq(2).get
+>>> cloud_sq(2).get()
 4
->>> local_cloud.register_dag('dag', ['square'], square)
+>>> local_cloud.register_dag('dag', ['square'], [])
 >>> local_cloud.call_dag('dag', { 'square': [2] }).get()
 4
 ```
