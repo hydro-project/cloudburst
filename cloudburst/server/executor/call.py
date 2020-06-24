@@ -302,9 +302,8 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
 
     if batching:
         fargs = [[]] * len(farg_sets[0])
-        for farg_set in farg_sets:
-            for idx, val in enumerate(farg_set):
-                fargs[idx].append(val)
+        for idx in range(len(fargs)):
+            fargs[idx] = [fset[idx] for fset in farg_sets]
     else: # There will only be one thing in farg_sets
         fargs = farg_sets[0]
 
@@ -337,29 +336,42 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
                 sckt = pusher_cache.get(sutils.get_dag_trigger_address(dest_ip))
                 sckt.send(new_trigger.SerializeToString())
 
-        if is_sink:
-            if schedule.continuation.name:
-                cont = schedule.continuation
-                cont.id = schedule.id
-                cont.result = serializer.dump(result)
+    if is_sink:
+        if schedule.continuation.name:
+            for idx, pair in enumerate(zip(schedules, result_list)):
+                schedule, result = pair
+                if successes[idx]:
+                    cont = schedule.continuation
+                    cont.id = schedule.id
+                    cont.result = serializer.dump(result)
 
-                logging.info('Sending continuation to scheduler for DAG %s.' %
-                             (schedule.id))
-                sckt = pusher_cache.get(utils.get_continuation_address(schedulers))
-                sckt.send(cont.SerializeToString())
-            elif schedule.response_address:
-                sckt = pusher_cache.get(schedule.response_address)
-                logging.info('DAG %s (ID %s) result returned to requester.' %
-                             (schedule.dag.name, trigger.id))
-                sckt.send(serializer.dump(result))
+                    logging.info('Sending continuation to scheduler for DAG %s.' %
+                                 (schedule.id))
+                    sckt = pusher_cache.get(utils.get_continuation_address(schedulers))
+                    sckt.send(cont.SerializeToString())
+        elif schedule.response_address:
+            for idx, pair in enumerate(zip(schedules, result_list)):
+                schedule, result = pair
+                if successes[idx]:
+                    sckt = pusher_cache.get(schedule.response_address)
+                    logging.info('DAG %s (ID %s) result returned to requester.' %
+                                 (schedule.dag.name, trigger.id))
+                    sckt.send(serializer.dump(result))
+        else:
+            keys = []
+            lattices = []
+            for idx, pair in enumerate(zip(schedules, result_list)):
+                schedule, result = pair
+                if successes[idx]:
+                    lattice = serializer.dump_lattice(result)
+                    output_key = schedule.output_key if schedule.output_key \
+                        else schedule.id
+                    logging.info('DAG %s (ID %s) result in KVS at %s.' %
+                                 (schedule.dag.name, schedule.id, output_key))
 
-            else:
-                lattice = serializer.dump_lattice(result)
-                output_key = schedule.output_key if schedule.output_key \
-                    else schedule.id
-                logging.info('DAG %s (ID %s) result in KVS at %s.' %
-                             (schedule.dag.name, trigger.id, output_key))
-                kvs.put(output_key, lattice)
+                    keys.append(output_key)
+                    lattices.append(lattice)
+            kvs.put(keys, lattices)
 
     return is_sink, successes
 

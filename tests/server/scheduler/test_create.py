@@ -60,9 +60,10 @@ class TestSchedulerCreate(unittest.TestCase):
         self.ip = '127.0.0.1'
 
         self.policy = DefaultCloudburstSchedulerPolicy(self.pin_socket,
-                                                    self.pusher_cache,
-                                                    self.kvs_client, self.ip,
-                                                    random_threshold=0)
+                                                       self.pusher_cache,
+                                                       self.kvs_client, self.ip,
+                                                       policy='random',
+                                                       random_threshold=0)
 
     '''
     INDIVIDUAL FUNCTION CREATION TESTS

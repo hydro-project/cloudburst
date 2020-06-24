@@ -31,11 +31,11 @@ def pin(pin_socket, pusher_cache, kvs, status, function_cache, runtimes,
 
     # We currently only allow one pinned function per container in non-local
     # mode.
-    if (not local and ((len(function_cache) > 0 and name not in function_cache)
-            or not status.running)):
-        sutils.error.SerializeToString()
-        sckt.send(sutils.error.SerializeToString())
-        return batching
+    if not local:
+        if (len(function_cache) > 0 and name not in function_cache):
+            sutils.error.SerializeToString()
+            sckt.send(sutils.error.SerializeToString())
+            return batching
 
     func = utils.retrieve_function(pin_msg.name, kvs, user_library)
 

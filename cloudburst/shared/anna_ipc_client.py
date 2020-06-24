@@ -150,31 +150,44 @@ class AnnaIpcClient(BaseAnnaClient):
             else:
                 return ((None, None), kv_pairs)
 
-    def put(self, key, value):
-        request, tuples = self._prepare_data_request([key])
+    def put(self, keys, values):
+        if type(keys) != list:
+            keys = [keys]
+        if type(values) != list:
+            values = [values]
 
-        # We can assume this is tuples[0] because we only support one put
-        # operation at a time.
-        tup = tuples[0]
-        tup.payload, tup.lattice_type = self._serialize(value)
+        request, tuples = self._prepare_data_request(keys)
+
+        for tup, value in zip(tuples, values):
+            tup.payload, tup.lattice_type = self._serialize(value)
 
         request.response_address = self.put_response_address
         self.put_request_socket.send(request.SerializeToString())
 
-        try:
-            msg = self.put_response_socket.recv()
-        except zmq.ZMQError as e:
-            if e.errno == zmq.EAGAIN:
-                logging.error("Request for %s timed out!" % (str(key)))
+        result = {}
+        num_responses = 0
+        for key in keys:
+            result[key] = False
+
+        while num_responses < len(keys):
+            try:
+                msg = self.put_response_socket.recv()
+            except zmq.ZMQError as e:
+                if e.errno == zmq.EAGAIN:
+                    logging.error("Request for %s timed out!" % (str(key)))
+                else:
+                    logging.error("Unexpected ZMQ error: %s." % (str(e)))
+
+                return result
             else:
-                logging.error("Unexpected ZMQ error: %s." % (str(e)))
+                resp = KeyResponse()
+                resp.ParseFromString(msg)
 
-            return False
-        else:
-            resp = KeyResponse()
-            resp.ParseFromString(msg)
+                for tup in resp.tuples:
+                    num_responses += 1
+                    result[tup.key] = (tup.error == NO_ERROR)
 
-            return resp.tuples[0].error == NO_ERROR
+        return result
 
     def causal_put(self, key, mk_causal_value, client_id):
         request, tuples = self._prepare_causal_data_request(client_id, key,

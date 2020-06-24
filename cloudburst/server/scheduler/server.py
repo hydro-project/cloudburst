@@ -65,7 +65,7 @@ logging.basicConfig(filename='log_scheduler.txt', level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
 
-def scheduler(ip, mgmt_ip, route_addr):
+def scheduler(ip, mgmt_ip, route_addr, policy_type):
 
     # If the management IP is not set, we are running in local mode.
     local = (mgmt_ip is None)
@@ -122,7 +122,7 @@ def scheduler(ip, mgmt_ip, route_addr):
                              (sutils.SCHED_UPDATE_PORT))
 
     pin_accept_socket = context.socket(zmq.PULL)
-    pin_accept_socket.setsockopt(zmq.RCVTIMEO, 500)
+    pin_accept_socket.setsockopt(zmq.RCVTIMEO, 10000) # 10 seconds.
     pin_accept_socket.bind(sutils.BIND_ADDR_TEMPLATE %
                            (sutils.PIN_ACCEPT_PORT))
 
@@ -156,7 +156,7 @@ def scheduler(ip, mgmt_ip, route_addr):
 
     # Start the policy engine.
     policy = DefaultCloudburstSchedulerPolicy(pin_accept_socket, pusher_cache,
-                                           kvs, ip, local=local)
+                                           kvs, ip, policy_type, local=local)
     policy.update()
 
     start = time.time()
@@ -270,6 +270,9 @@ def scheduler(ip, mgmt_ip, route_addr):
 
             call_dag(call, pusher_cache, dags, policy, continuation.id)
 
+            for fname in dag.functions:
+                call_frequency[fname.name] += 1
+
         end = time.time()
 
         if end - start > METADATA_THRESHOLD:
@@ -343,4 +346,5 @@ if __name__ == '__main__':
     conf = sutils.load_conf(conf_file)
     sched_conf = conf['scheduler']
 
-    scheduler(conf['ip'], conf['mgmt_ip'], sched_conf['routing_address'])
+    scheduler(conf['ip'], conf['mgmt_ip'], sched_conf['routing_address'],
+              sched_conf['policy'])

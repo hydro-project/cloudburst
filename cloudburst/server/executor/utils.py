@@ -37,7 +37,11 @@ def generate_error_response(schedule, client, fname):
     result = ('ERROR: ' + fname + ' not in function cache', sutils.error.SerializeToString())
     if schedule.consistency == NORMAL:
         result = serializer.dump_lattice(result)
-        client.put(schedule.output_key, result)
+
+        if len(schedule.output_key) > 0:
+            client.put(schedule.output_key, result)
+        else:
+            client.put(schedule.id, result)
     else:
         result = serializer.dump_lattice(result, MultiKeyCausalLattice)
         client.causal_put(schedule.output_key, result)
