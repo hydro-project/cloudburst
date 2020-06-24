@@ -24,7 +24,11 @@ from cloudburst.server.scheduler.policy.default_policy import (
 from cloudburst.server.scheduler.utils import get_cache_ip_key
 import cloudburst.server.utils as sutils
 from cloudburst.shared.proto.cloudburst_pb2 import Dag
-from cloudburst.shared.proto.internal_pb2 import ThreadStatus, SchedulerStatus
+from cloudburst.shared.proto.internal_pb2 import (
+    ThreadStatus,
+    SchedulerStatus,
+    CPU
+)
 from cloudburst.shared.proto.shared_pb2 import StringSet
 from cloudburst.shared.serializer import Serializer
 from tests.mock import kvs_client, zmq_utils
@@ -52,6 +56,7 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         self.policy = DefaultCloudburstSchedulerPolicy(self.pin_socket,
                                                        self.pusher_cache,
                                                        self.kvs_client, self.ip,
+                                                       policy='random',
                                                        random_threshold=0)
 
     def tearDown(self):
@@ -72,7 +77,7 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         '''
         # Create two executors, one of which has received too many requests,
         # and the other of which has reported high load.
-        address_set = {(self.ip, 1), (self.ip, 2)}
+        address_set = {(self.ip, 1), (self.ip, 2), (self.ip, 3)}
         self.policy.unpinned_cpu_executors.update(address_set)
 
         self.policy.backoff[(self.ip, 1)] = time.time()
@@ -84,7 +89,8 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         # Ensure that we have returned None because both our valid executors
         # were overloaded.
         result = self.policy.pick_executor([])
-        self.assertEqual(result, None)
+        self.assertEqual(result, (self.ip, 3))
+
 
     def test_pin_reject(self):
         '''
@@ -163,6 +169,7 @@ class TestDefaultSchedulerPolicy(unittest.TestCase):
         status.tid = 1
         status.running = True
         status.utilization = 0
+        status.type = CPU
 
         # Process the status and check the metadata.
         self.policy.process_status(status)

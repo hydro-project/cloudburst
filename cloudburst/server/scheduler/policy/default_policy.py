@@ -146,6 +146,10 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                 if len(executors) > 1:
                     executors.discard(key)
 
+        if len(executors) == 0:
+            logging.error('No available executors.')
+            return None
+
         executor_ips = set([e[0] for e in executors])
 
         # For each reference, we look at all the places where they are cached,
@@ -362,18 +366,10 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             return
 
         if len(status.functions) == 0:
-            # Check to see if this message was sent before I asked it to pin
-            # something.
-            pinning = False
-            for fname in self.function_locations:
-                if key in self.function_locations[fname]:
-                    pinning = True
-
-            if not pinning:
-                if status.type == CPU:
-                    self.unpinned_cpu_executors.add(key)
-                else:
-                    self.unpinned_gpu_executors.add(key)
+            if status.type == CPU:
+                self.unpinned_cpu_executors.add(key)
+            else:
+                self.unpinned_gpu_executors.add(key)
 
         # Remove all the old function locations, and all the new ones -- there
         # will probably be a large overlap, but this shouldn't be much

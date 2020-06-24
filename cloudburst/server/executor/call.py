@@ -338,33 +338,39 @@ def _exec_dag_function_normal(pusher_cache, kvs, trigger_sets, function,
 
     if is_sink:
         if schedule.continuation.name:
-            for schedule, result in zip(schedules, result_list):
-                cont = schedule.continuation
-                cont.id = schedule.id
-                cont.result = serializer.dump(result)
+            for idx, pair in enumerate(zip(schedules, result_list)):
+                schedule, result = pair
+                if successes[idx]:
+                    cont = schedule.continuation
+                    cont.id = schedule.id
+                    cont.result = serializer.dump(result)
 
-                logging.info('Sending continuation to scheduler for DAG %s.' %
-                             (schedule.id))
-                sckt = pusher_cache.get(utils.get_continuation_address(schedulers))
-                sckt.send(cont.SerializeToString())
+                    logging.info('Sending continuation to scheduler for DAG %s.' %
+                                 (schedule.id))
+                    sckt = pusher_cache.get(utils.get_continuation_address(schedulers))
+                    sckt.send(cont.SerializeToString())
         elif schedule.response_address:
-            for schedule, result in zip(schedules, result_list):
-                sckt = pusher_cache.get(schedule.response_address)
-                logging.info('DAG %s (ID %s) result returned to requester.' %
-                             (schedule.dag.name, trigger.id))
-                sckt.send(serializer.dump(result))
+            for idx, pair in enumerate(zip(schedules, result_list)):
+                schedule, result = pair
+                if successes[idx]:
+                    sckt = pusher_cache.get(schedule.response_address)
+                    logging.info('DAG %s (ID %s) result returned to requester.' %
+                                 (schedule.dag.name, trigger.id))
+                    sckt.send(serializer.dump(result))
         else:
             keys = []
             lattices = []
-            for schedule, result in zip(schedules, result_list):
-                lattice = serializer.dump_lattice(result)
-                output_key = schedule.output_key if schedule.output_key \
-                    else schedule.id
-                logging.info('DAG %s (ID %s) result in KVS at %s.' %
-                             (schedule.dag.name, schedule.id, output_key))
+            for idx, pair in enumerate(zip(schedules, result_list)):
+                schedule, result = pair
+                if successes[idx]:
+                    lattice = serializer.dump_lattice(result)
+                    output_key = schedule.output_key if schedule.output_key \
+                        else schedule.id
+                    logging.info('DAG %s (ID %s) result in KVS at %s.' %
+                                 (schedule.dag.name, schedule.id, output_key))
 
-                keys.append(output_key)
-                lattices.append(lattice)
+                    keys.append(output_key)
+                    lattices.append(lattice)
             kvs.put(keys, lattices)
 
     return is_sink, successes
