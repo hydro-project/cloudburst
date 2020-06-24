@@ -35,8 +35,6 @@ def get_func_list(client, prefix, tid, fullname=False):
 
     print(funcs.reveal())
     prefix = sutils.FUNC_PREFIX + prefix
-    # decoded = map(lambda v: str(v, 'utf-8'), funcs.reveal())
-    # result = list(filter(lambda fn: fn.startswith(prefix), decoded))
     result = list(filter(lambda fn: fn.startswith(prefix),
                          cp.loads(funcs.reveal())))
 
@@ -48,14 +46,6 @@ def get_func_list(client, prefix, tid, fullname=False):
 
 
 def put_func_list(client, tid, funclist):
-    # Convert to a set in order to remove duplicates.
-    # result = set()
-    # for val in funclist:
-    #     result.add(bytes(val, 'utf-8'))
-
-    # lattice = SetLattice(result)
-    # client.put(FUNCOBJ, lattice, txn_id=tid)
-
     lattice = LWWPairLattice(0, cp.dumps(funclist))
     client.put(FUNCOBJ, lattice, txn_id=tid)
 

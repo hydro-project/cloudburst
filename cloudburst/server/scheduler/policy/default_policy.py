@@ -118,20 +118,16 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                 if ip in candidate_nodes:
                     return ip, tid
 
-        # for executor in self.backoff:
-        #     executors.discard(executor)
+        for executor in self.backoff:
+            executors.discard(executor)
 
         # Generate a list of all the keys in the system; if any of these nodes
         # have received many requests, we remove them from the executor set
         # with high probability.
-        # for key in self.running_counts:
-        #     if (len(self.running_counts[key]) > 1000 and sys_random.random() >
-        #             self.random_threshold):
-        #         executors.discard(key)
-        if function_name:
-            executor = self.function_locations[function_name].pop(0)
-            self.function_locations[function_name].append(executor)
-            return executor
+        for key in self.running_counts:
+            if (len(self.running_counts[key]) > 1000 and sys_random.random() >
+                    self.random_threshold):
+                executors.discard(key)
 
         if len(executors) == 0:
             logging.error('No available executors for %s.' % (function_name))
@@ -179,8 +175,8 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
         # Remove this IP/tid pair from the system's metadata until it notifies
         # us that it is available again, but only do this for non-DAG requests.
-        # if not self.local and not function_name:
-        #     self.unpinned_cpu_executors.discard(max_ip)
+        if not self.local and not function_name:
+            self.unpinned_cpu_executors.discard(max_ip)
 
         if not max_ip:
             logging.error('No available executors.')

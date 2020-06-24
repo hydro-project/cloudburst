@@ -69,11 +69,6 @@ git submodule update
 # Compile protobufs and run other installation procedures before starting.
 ./scripts/build.sh
 
-cd /flow
-git pull origin master
-python3.6 setup.py install
-cd $HYDRO_HOME/cloudburst
-
 touch conf/cloudburst-config.yml
 echo "ip: $IP" >> conf/cloudburst-config.yml
 echo "mgmt_ip: $MGMT_IP" >> conf/cloudburst-config.yml

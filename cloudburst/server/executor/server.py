@@ -171,7 +171,6 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             elapsed = time.time() - work_start
             event_occupancy['pin'] += elapsed
             total_occupancy += elapsed
-            print(f"Pin function took {elapsed}")
 
         if unpin_socket in socks and socks[unpin_socket] == zmq.POLLIN:
             work_start = time.time()
@@ -383,7 +382,6 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             elapsed = time.time() - work_start
             event_occupancy['dag_exec'] += elapsed
             total_occupancy += elapsed
-            logging.info(f'Function {fname} took {elapsed}...')
 
         if self_depart_socket in socks and socks[self_depart_socket] == \
                 zmq.POLLIN:
