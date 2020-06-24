@@ -265,10 +265,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             # pin this function there.
             node, tid = sys_random.sample(candidates, 1)[0]
 
-            for other in self.pending_dags[dag_name]:
-                _, thread = other
-                other_node, _ = other
-
+            for other_node, _ in self.pending_dags[dag_name]:
                 if len(candidates) > 1 and node == other_node:
                     continue
 
