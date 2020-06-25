@@ -41,9 +41,13 @@ NUM_EXECUTOR_THREADS = 3
 class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
 
     def __init__(self, pin_accept_socket, pusher_cache, kvs_client, ip,
-                 random_threshold=0.20, local=False):
+                 policy, random_threshold=0.20, local=False):
         # This scheduler's IP address.
         self.ip = ip
+
+        # The policy to use with the scheduler -- random, round-robin, or
+        # locality.
+        self.policy = policy
 
         # A socket to listen for confirmations of pin operations' successes.
         self.pin_accept_socket = pin_accept_socket
@@ -119,15 +123,28 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                     return ip, tid
 
         for executor in self.backoff:
-            executors.discard(executor)
+            if len(executors) > 1:
+                executors.discard(executor)
+
+        # Shortcut policies -- if neither of these are activated, we go to the
+        # default backoff and locality policy.
+        if function_name:
+            if self.policy == 'random':
+                return random.choice(self.function_locations[function_name])
+            if self.policy == 'round-robin':
+                executor = self.function_locations[function_name].pop(0)
+                self.function_locations[function_name].append(executor)
+                return executor
+
 
         # Generate a list of all the keys in the system; if any of these nodes
         # have received many requests, we remove them from the executor set
         # with high probability.
         for key in self.running_counts:
-            if (len(self.running_counts[key]) > 1000 and sys_random.random() >
-                    self.random_threshold):
-                executors.discard(key)
+           if (len(self.running_counts[key]) > 1000 and sys_random.random() >
+                   self.random_threshold):
+                if len(executors) > 1:
+                    executors.discard(key)
 
         if len(executors) == 0:
             logging.error('No available executors.')
@@ -248,6 +265,10 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
             # pin this function there.
             node, tid = sys_random.sample(candidates, 1)[0]
 
+            for other_node, _ in self.pending_dags[dag_name]:
+                if len(candidates) > 1 and node == other_node:
+                    continue
+
             sckt = self.pusher_cache.get(get_pin_address(node, tid))
             sckt.send(serialized)
 
@@ -292,9 +313,9 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
     def commit_dag(self, dag_name):
         for function_name, location in self.pending_dags[dag_name]:
             if function_name not in self.function_locations:
-                self.function_locations[function_name] = set()
+                self.function_locations[function_name] = []
 
-            self.function_locations[function_name].add(location)
+            self.function_locations[function_name].append(location)
 
         del self.pending_dags[dag_name]
 
@@ -330,7 +351,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         if not status.running:
             if key in self.thread_statuses:
                 for fname in self.thread_statuses[key].functions:
-                    self.function_locations[fname].discard(key)
+                    self.function_locations[fname].remove(key)
 
                 del self.thread_statuses[key]
 
@@ -358,9 +379,10 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         self.thread_statuses[key] = status
         for function_name in status.functions:
             if function_name not in self.function_locations:
-                self.function_locations[function_name] = set()
+                self.function_locations[function_name] = list()
 
-            self.function_locations[function_name].add(key)
+            if key not in self.function_locations[function_name]:
+                self.function_locations[function_name].insert(0, key)
 
         # If the executor thread is overutilized, we add it to the backoff set
         # and ignore it for a period of time.
@@ -425,7 +447,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         for location in new_locations:
             function_name = location.name
             if function_name not in self.function_locations:
-                self.function_locations[function_name] = set()
+                self.function_locations[function_name] = []
 
             key = (location.ip, location.tid)
-            self.function_locations[function_name].add(key)
+            self.function_locations[function_name].append(key)

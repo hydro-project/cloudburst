@@ -263,7 +263,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
                         fend = time.time()
                         fstart = receive_times[(schedule.id, fname)]
-                        runtimes[fname].append(fend - fstart)
+                        runtimes[fname].append(fend - work_start)
                         exec_counts[fname] += 1
 
                         finished_executions[(schedule.id, fname)] = time.time()
@@ -359,25 +359,29 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
             # Pass all of the trigger_sets into exec_dag_function at once.
             # We also include the batching variaible to make sure we know
             # whether to pass lists into the fn or not.
-            successes = exec_dag_function(pusher_cache, client,
-                                          trigger_sets,
-                                          function_cache[fname],
-                                          schedules, user_library,
-                                          dag_runtimes, cache,
-                                          schedulers, batching)
-            user_library.close()
-            del received_triggers[key]
+            if len(trigger_sets) > 0:
+                successes = exec_dag_function(pusher_cache, client,
+                                              trigger_sets,
+                                              function_cache[fname],
+                                              schedules, user_library,
+                                              dag_runtimes, cache,
+                                              schedulers, batching)
+                user_library.close()
+                del received_triggers[key]
 
-            for key, success in zip(trigger_keys, successes):
-                if success:
-                    del queue[fname][key[0]] # key[0] is trigger.id.
+                for key, success in zip(trigger_keys, successes):
+                    if success:
+                        del queue[fname][key[0]] # key[0] is trigger.id.
 
-                    fend = time.time()
-                    fstart = receive_times[key]
-                    runtimes[fname].append(fend - fstart)
-                    exec_counts[fname] += 1
+                        fend = time.time()
+                        fstart = receive_times[key]
 
-                    finished_executions[(schedule.id, fname)] = time.time()
+                        average_time = (fend - work_start) / len(trigger_keys)
+
+                        runtimes[fname].append(average_time)
+                        exec_counts[fname] += 1
+
+                        finished_executions[(schedule.id, fname)] = time.time()
 
             elapsed = time.time() - work_start
             event_occupancy['dag_exec'] += elapsed
@@ -400,7 +404,10 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
         # periodically report function occupancy
         report_end = time.time()
         if report_end - report_start > REPORT_THRESH:
-            cache.clear()
+            if len(cache) > 100:
+                extra_keys = list(cache.keys())[:len(cache) - 100]
+                for key in extra_keys:
+                    del cache[key]
 
             utilization = total_occupancy / (report_end - report_start)
             status.utilization = utilization

@@ -53,7 +53,10 @@ class Serializer():
                              {str(type(data))}.''')
 
         if val.type == DEFAULT:
-            return self._load_default(val.body)
+            try:
+                return self._load_default(val.body)
+            except: # Unpickling error.
+                return val.body
         elif val.type == STRING:
             return self._load_string(val.body)
         elif val.type == NUMPY:
