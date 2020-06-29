@@ -450,4 +450,5 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
                 self.function_locations[function_name] = []
 
             key = (location.ip, location.tid)
-            self.function_locations[function_name].append(key)
+            if key not in self.function_locations[function_name]:
+                self.function_locations[function_name].append(key)
