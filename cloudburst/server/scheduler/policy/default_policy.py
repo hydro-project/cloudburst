@@ -374,7 +374,7 @@ class DefaultCloudburstSchedulerPolicy(BaseCloudburstSchedulerPolicy):
         if key in self.thread_statuses and self.thread_statuses[key] != status:
             for function_name in self.thread_statuses[key].functions:
                 if function_name in self.function_locations:
-                    self.function_locations[function_name].discard(key)
+                    self.function_locations[function_name].remove(key)
 
         self.thread_statuses[key] = status
         for function_name in status.functions:
