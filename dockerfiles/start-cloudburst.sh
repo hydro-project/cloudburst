@@ -95,6 +95,7 @@ if [[ "$ROLE" = "executor" ]]; then
 elif [[ "$ROLE" = "scheduler" ]]; then
   echo "scheduler:" >> conf/cloudburst-config.yml
   echo "    routing_address: $ROUTE_ADDR" >> conf/cloudburst-config.yml
+  echo "    policy: $POLICY" >> conf/cloudburst-config.yml
 
   python3.6 cloudburst/server/scheduler/server.py
 elif [[ "$ROLE" = "benchmark" ]]; then
