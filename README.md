@@ -4,7 +4,12 @@
 [![codecov](https://codecov.io/gh/hydro-project/cloudburst/branch/master/graph/badge.svg)](https://codecov.io/gh/hydro-project/cloudburst)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
+
 Cloudburst is a low-latency, stateful serverless programming framework built on top of the [Anna KVS](https://github.com/hydro-project/anna). Cloudburst enables users to execute compositions of functions at low latency, and the system builds on top of Anna in order to enable stateful computation. Cloudburst is co-deployed with the [Anna caching system](https://github.com/hydro-project/anna-cache) to achieve low-latency access to shared state, and the system relies on Anna's lattice data structures to resolve conflicting updates to shared state.
+
+### Experimental Branch
+
+The `aft-support` branch has experimental support for Cloudburst with AFT transaction support. You can read more about the motivations and features for this integration in [Section 3.3 of this dissertation](https://www.vikrams.io/papers/thesis.pdf).
 
 ## Getting Started
 
