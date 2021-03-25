@@ -6,7 +6,7 @@ pandas==0.25.1
 protobuf==3.6.1
 pyarrow==0.14.1
 pycodestyle==2.5.0
-PyYAML==5.1.2
+PyYAML==5.4
 pyzmq==17.1.2
 zmq==0.0.0
 setuptools==45.2.0
