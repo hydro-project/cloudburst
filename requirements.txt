@@ -1,7 +1,7 @@
 cloudpickle==0.6.1
 coverage==4.5.4
 flake8==3.7.7
-numpy==1.16.1
+numpy==1.22.0
 pandas==0.25.1
 protobuf==3.6.1
 pyarrow==0.14.1
