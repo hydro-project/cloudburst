@@ -3,7 +3,7 @@ coverage==4.5.4
 flake8==3.7.7
 numpy==1.16.1
 pandas==0.25.1
-protobuf==3.6.1
+protobuf==3.18.3
 pyarrow==0.14.1
 pycodestyle==2.5.0
 PyYAML==5.1.2
