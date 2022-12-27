@@ -9,4 +9,4 @@ pycodestyle==2.5.0
 PyYAML==5.1.2
 pyzmq==17.1.2
 zmq==0.0.0
-setuptools==45.2.0
+setuptools==65.5.1
